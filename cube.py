@@ -460,11 +460,6 @@ def display_unfolded_cube(scope="cube"
     Yields:
         _type_: _description_
     """    
-
-    # scope :=  "cube"      display cube sides and pieces only
-    #           "cursor"    delete old cursor and display new one
-    #           "all"       display cube side and cursor, do not delete old cursor
-
     global cursor_obj
     global cursor_pos_obj
     global cursor_pos_piece_obj
@@ -475,14 +470,6 @@ def display_unfolded_cube(scope="cube"
         255, 140, 0), "r": color_rgb(200, 0, 0), "b": color_rgb(0, 0, 0), "y": color_rgb(255, 255, 0)}
     background_color_codes = {"c": color_rgb(0, 0, 0), "g": color_rgb(0, 0, 0), "o": color_rgb(
         0, 0, 0), "r": color_rgb(155, 255, 255), "b": color_rgb(255, 255, 255), "y": color_rgb(0, 0, 255)}
-    # Unfolded side grid layout :
-    #
-    #   0       1 jkhhjkhjk2
-    # 0         Down
-    # 1         Back
-    # 2 Left    Up      Right
-    # 3         Front
-    #
 
     def get_x_y(side_index, col_index, row_index, consider_side_rotation=True):
         rotated_col_row = [col_index, row_index]
@@ -529,11 +516,11 @@ def display_unfolded_cube(scope="cube"
                             if row[4] != None:
                                 row[4].move(x-x0, y-y0)
                             else:
+                                #pass
                                 center = row[3].getCenter()
                                 #row[4] = Text(Point(center.x, center.y), str(col_index) + str(row_index))
                                 row[4] = Text(Point(center.x, center.y), row[1])
-                                row[4].setTextColor(
-                                background_color_codes[color])
+                                row[4].setTextColor(background_color_codes[color])
                                 row[4].draw(win)
                             row[2] = 0
                 # sleep(2)
@@ -645,12 +632,13 @@ def display_keys_usage():
     t4.draw(win)
 
 
-def rotate_side(col_row, rotation=None):
+def rotate_side(col_row, rotation=0):
     """ Returns rotated col and row index side coordinate in respect to the given side rotation.
         If no rotation spefice col and row index remain unchanged.
 
     Args:
-        col_row : list (2) of col and row index 
+        col_row : list (2) of col and row index
+        rotation : relative rotation to side 0 in degree 
     Returns:
         new_col_row : list (2) of rotated col and row index
     """             
@@ -703,12 +691,16 @@ def translate_col_row(from_side, to_side, from_col, from_row):
 
 
 def navigate_pos(position, direction, side_selected=False):
-    # 0 U : up    side  default black
-    # 1 D : down  side  default yellow
-    # 2 L : left  side  default green
-    # 3 R : right side  default cyan
-    # 4 F : front side  default red
-    # 5 B : back  side  default orange
+    """ Navigate cursor from current position to the given direction
+
+    Args:
+        position (list): [side, row, col]
+        direction (string): "Up", "Down", "Left", "Right"
+        side_selected (bool, optional): _description_. Defaults to False.
+
+    Returns:
+        _type_: _description_
+    """
 
     # next side (direction relative to side orientation)
     next_side_up_rotation = {0: 5, 5: 0, 1: 4, 4: 0, 2: 0, 3: 0}
