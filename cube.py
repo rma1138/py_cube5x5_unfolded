@@ -71,15 +71,15 @@ opposite_direction = {"Up": "Down",
 height = 1180
 width = 850
 win = GraphWin("Cube 5x5x5", width, height)
-win.setBackground(color_rgb(50, 50, 50))
+win.setBackground(color_rgb(150,150,150))
 win_bottom_status_height = 80
 cursor_color_rgb = [255, 255, 255]
 
 # Side indexes 0 Up, 1 Down, 2 Left, 3 Right, 4 Front, 5 Back
 side_grid_pos = [[1, 2], [1, 0], [0, 2], [2, 2], [1, 3], [1, 1]]
 piece_size = 50
-spacer = 3
-side_spacer = 0
+spacer = 2
+side_spacer = 6
 side_size = (piece_size + spacer) * 5 + side_spacer
 x_margin = (win.width - 3 * side_size) // 2
 y_margin = (win.height - (win_bottom_status_height + 15) - 4 * side_size) // 2
@@ -96,7 +96,7 @@ text_obj = Text(Point(0, 0), "")
 moves = []
 
 # terminal output 
-term_out = 0
+term_out = 1
 
 def is_color_adjacient(first_color, second_color, third_color=None):
     """ Check if first side color is adjacient to second and, if provided, to third side color
@@ -1019,7 +1019,7 @@ def solve_cube(cursor_pos, first_color='b'):
 
     def is_piece_reversed(piece, side, side_color): 
         reversed = False
-        if piece in (cube_borders + cube_corners) :
+        if piece in (cube_borders) :
             # one part of the piece is on the specified side but 
             # with the wrong color
             for col in cube[side] :
@@ -1027,9 +1027,9 @@ def solve_cube(cursor_pos, first_color='b'):
                     if row[1] == piece and row[0] != side_color :
                         reversed = True
         return reversed
-    
 
-    def is_border_on_bottom_row(piece, from_pos, to_side, side_color): 
+
+    def is_piece_on_bottom_row(piece, from_pos, to_side, side_color): 
         on_bottom_row = False
         from_side = from_pos[0]
         from_col  = from_pos[1]
@@ -1193,6 +1193,7 @@ def solve_cube(cursor_pos, first_color='b'):
                         piece_travels.append([corner, from_pos, to_pos])
                         if term_out : 
                             print("    travel corner", corner, "from", from_pos, "to", to_pos)
+                            break
 
         if pieces[0] in cube_borders : 
             # cube_corners 
@@ -1218,6 +1219,7 @@ def solve_cube(cursor_pos, first_color='b'):
                         piece_travels.append([border, from_pos, to_pos])
                         if term_out :
                             print("    travel border", border, "from", from_pos, "to", to_pos)
+                            break
 
         return piece_travels
 
@@ -1238,10 +1240,10 @@ def solve_cube(cursor_pos, first_color='b'):
         misplaced_piece_travels = []
         # If misplaced corners exist place them to their target position starting with
         #
-        #    1. the ones on the target side but on the wrong position
-        #    2. the ones which are on the target side but with the wrong color (reversed)
-        #    3. the ones which have the target color on the opposite side
-        #    4. the ones placed on the bottom line (row or col depending on oritentation) 
+        #    1. 
+        #    2. the corners on the target side but on the wrong position
+        #    3. the corners which have the target color on the opposite side
+        #    4. the corners placed on the bottom line (row or col depending on oritentation) 
         #       of the adjacient side (alligned)
         #
         #  After one piece has been moved to its correct target place, 
@@ -1261,62 +1263,68 @@ def solve_cube(cursor_pos, first_color='b'):
                 to_col    = to_pos[1]
                 to_row    = to_pos[2] 
 
-                # case 1 : check if target side has to be rotated to place the corner
-                #          only when all corners are misplaced
-                if from_side == to_side and len(misplaced_piece_travels) == 4 :
-                    if from_col != to_col and from_row != to_row :
-                        turn(from_pos, 180)
-                    elif from_col == to_col == 4 :
+                # case 1 : if corner on adjacient side but not aligned and on the top row 
+                #          move it down, to be algined later (case 4)
+                if is_side_adjacient(from_side, to_side) :
+                    if term_out :
+                        print("    case 1 : is_side_adjacient")
+                    if not is_piece_aligned(from_pos, to_pos) :
+                        if term_out :
+                            print("    case 1 : not is_piece_aligned")
+                        if not is_piece_on_bottom_row(piece, from_pos, to_side, first_color) :
+                            if term_out :
+                                print("    case 1 : corner on adjecient side but on top row")
+                            pass
+
+                # case 2 : check if target side has to be rotated
+                #
+                if from_side == to_side : #and len(misplaced_piece_travels) == 4 :
+                    if term_out :
+                        print("    case 2 : corner have to be rotated")
+
+                    if   from_col <  to_col and from_row == to_row == 0:
+                        turn(from_pos, 90)
+                    elif from_col >  to_col and from_row == to_row == 4:
+                        turn(from_pos, 90)
+                    elif from_col == to_col == 4 and from_row < to_row :
+                        turn(from_pos, 90)
+                    elif from_col == to_col == 0 and from_row > to_row :
+                        turn(from_pos, 90)
+                    elif from_col >  to_col and from_row == to_row == 0:
+                        turn(from_pos, 270)
+                    elif from_col <  to_col and from_row == to_row == 4:
+                        turn(from_pos, 270)
+                    elif from_col == to_col == 4 and from_row > to_row :
+                        turn(from_pos, 270)
+                    elif from_col == to_col == 0 and from_row < to_row :
                         turn(from_pos, 270)
                     else :
-                        turn(from_pos, 90)
+                        turn(from_pos, 180)
                     display_unfolded_cube("cube")
                     break   # skip and re-evaluate remaining misplaced pieace
                 
-                # case 2 : check if corner piece is on the target side but reversed and move it  
-                #          down to the bottom row. Use same move as for alligned corners, just take 
-                #          the piece aligned on the bottom row 
-                if is_piece_reversed(piece, to_side, first_color) :
-                    if term_out :
-                        print("    corner", piece, "is reversed. Has to be moved down")
-                    direction = relative_direction(from_side, to_side)
-                    if direction  == "Up" :
-                        from_row = 4
-                    elif direction == "Down" :
-                        from_row = 0
-                    elif direction == "Left" :
-                        from_col = 4
-                    else :
-                        from_col = 0
-                    translated_col_row = translate_col_row(from_side, to_side, from_col, from_row)
-                    from_aligned_pos = [from_side, from_col, from_row]
-                    to_aligned_pos   = [to_side, translated_col_row[0], translated_col_row[1]]
-                    move_aligned_corner(from_aligned_pos, to_aligned_pos)
-                    break   # skip and re-evaluate remaining misplaced pieace
-
                 # case 3 : check if corner is on the opposite side move it up to the bottom row
                 if from_side == opposite_side[to_side] :
                     if term_out :
-                        print("    corner", piece, "is on the opposite side. Has to be moved to the botton row")
-
+                        print("    case 3 : corner", piece, "is on the opposite side. Has to be moved to the botton row")
                     move_oppositie_corner_to_bottom_row(piece, from_pos, to_side)
                     break   # skip and re-evaluate remaining misplaced pieace
-                    
+
                 # case 4 : if corner on adjacient side but not reversed then 
                 #          align it first than place it.
                 if is_side_adjacient(from_side, to_side) :
                     if not is_piece_aligned(from_pos, to_pos) :
-                        opposite_side_pos = [opposite_side[to_side], 2, 2]
-                        turn(opposite_side_pos, 270)         # TODO : avoid blind turning
+                        if term_out : 
+                            print("    case 4: corner", piece, "is not aligned")
+                        turn(to_side, 90)         # TODO : avoid blind turning
                         display_unfolded_cube("cube")
                         break # skip and re-evaluate remaining misplaced pieace
                     else :
                         if term_out : 
-                            print("    corner", piece, "is aligned")
+                            print("    case 4: corner", piece, "is aligned")
                         move_aligned_corner(from_pos, to_pos)
-
                     break   # skip and re-evaluate remaining misplaced pieace
-
+                    
             # process until no more misplaced pieces are found
             misplaced_piece_travels = fill_piece_travels(first_color, cube_corners, first_side)
 
