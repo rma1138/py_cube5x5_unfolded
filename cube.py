@@ -1316,7 +1316,7 @@ def solve_cube(cursor_pos, first_color='b'):
                     if not is_piece_aligned(from_pos, to_pos) :
                         if term_out : 
                             print("    case 4: corner", piece, "is not aligned")
-                        turn(to_side, 90)         # TODO : avoid blind turning
+                        turn(from_pos, to_side, 90)         # TODO : avoid blind turning
                         display_unfolded_cube("cube")
                         break # skip and re-evaluate remaining misplaced pieace
                     else :
