@@ -47,8 +47,8 @@ def is_color_adjacient(first_color, second_color, third_color=None):
                     return True
 
         return False
-
-
+    
+    # main 
     if third_color == None:
         return is_color_adjacient_2(first_color, second_color)
 
@@ -133,8 +133,7 @@ def corner_orientation(first, second, third, default_color_side=0):
         if side is specified, the relative side roation is considered (in border_orientation)
     """
     orientation = border_orientation(first, second, default_color_side)
-    orientation = orientation + \
-        border_orientation(first, third, default_color_side)
+    orientation = orientation + border_orientation(first, third, default_color_side)
     return reorder(orientation)
 
 
@@ -150,8 +149,7 @@ def default_side(color):
     cube_sides = {"U": 0, "D": 1, "F": 4, "B": 5, "L": 2, "R": 3}
     # black is on the up side
     # red is on the front side
-    default_side_names = {"b": "U", "y": "D",
-                          "r": "F", "o": "B", "g": "L", "c": "R"}
+    default_side_names = {"b": "U", "y": "D","r": "F", "o": "B", "g": "L", "c": "R"}
     default_side_name = default_side_names[color]
     side = cube_sides[default_side_name]
     return side
@@ -164,11 +162,7 @@ def init_cube():
         None
     """
     global cube
-
-    cube = [[[[None for i in range(5)] for j in range(5)]
-             for k in range(5)] for l in range(6)]
-    side = None
-
+    
     # set default cube for centers ("b", "c", "g", "y", "o", "r" )
     for piece in cube_centers:
         side = default_side(piece)
@@ -224,14 +218,12 @@ def init_cube():
                 else:
                     row = 1 + offset
     
-
             if orientation == "W":  # West
                 col = 0
                 if color_side[1] != 4 and color_side[1] != 2 or color_side[0] == 0 or color_side[0] == 4:
                     row = 1 + offset
                 else:
                     row = 3 - offset
-
 
             cube[color_side[0]][col][row][0] = color_side[2]
             cube[color_side[0]][col][row][1] = piece
@@ -269,7 +261,6 @@ def init_cube():
             cube[color_side[0]][col][row][0] = color_side[3]
             cube[color_side[0]][col][row][1] = piece
             cube[color_side[0]][col][row][2] = 1        # flagged as changed
-
 
     if debug or False:
         print("Cube piece cube positions (count, face, col, row, color, piece):")
@@ -370,10 +361,8 @@ def display_unfolded_cube(scope="cube", cursor_pos=None, side_selected=False, si
             rotation = side_rotation[side_index]
             rotated_col_row = rotate_side([col_index, row_index], rotation)
 
-        x = x_margin + side_grid_pos[side_index][0] * \
-            side_size + rotated_col_row[0] * (piece_size + spacer)
-        y = y_margin + side_grid_pos[side_index][1] * \
-            side_size + rotated_col_row[1] * (piece_size + spacer)
+        x = x_margin + side_grid_pos[side_index][0] * side_size + rotated_col_row[0] * (piece_size + spacer)
+        y = y_margin + side_grid_pos[side_index][1] * side_size + rotated_col_row[1] * (piece_size + spacer)
 
         return x, y
 
@@ -427,14 +416,14 @@ def display_unfolded_cube(scope="cube", cursor_pos=None, side_selected=False, si
 
                             else:
                                 # pass
-                                center = row[3].getCenter()
-                                # row[4] = Text(Point(center.x, center.y), str(col_index) + str(row_index))
-                                row[4] = Text(Point(center.x, center.y), row[1])
-                                row[4].setTextColor(background_color_codes[color])
-                                row[4].draw(win)
+                                if debug or False: 
+                                    center = row[3].getCenter()
+                                    # row[4] = Text(Point(center.x, center.y), str(col_index) + str(row_index))
+                                    row[4] = Text(Point(center.x, center.y), row[1])
+                                    row[4].setTextColor(background_color_codes[color])
+                                    row[4].draw(win)
 
                             row[2] = 0
-                # sleep(2)
 
     if scope in ("cursor", "all"):
         side_index = cursor_pos[0]
@@ -449,7 +438,8 @@ def display_unfolded_cube(scope="cube", cursor_pos=None, side_selected=False, si
 
             x, y = get_x_y(side_index, 0, 0, False)
             cursor_obj[0] = Rectangle(Point(x, y)
-                                      ,Point(x + 5 * (piece_size + spacer), y + 5 * (piece_size + spacer)))
+                                        ,Point(x + 5 * (piece_size + spacer)
+                                        ,y + 5 * (piece_size + spacer)))
             cursor_obj[0].setWidth(spacer * 3)
             cursor_obj[0].setOutline(color_rgb(cursor_color_rgb[0], cursor_color_rgb[1], cursor_color_rgb[2]))
             cursor_obj[0].draw(win)
@@ -458,11 +448,9 @@ def display_unfolded_cube(scope="cube", cursor_pos=None, side_selected=False, si
             col_index = cursor_pos[1]
             row_index = cursor_pos[2]
             x, y = get_x_y(side_index, col_index, row_index)
-            cursor_obj[0] = Rectangle(Point(x, y), Point(
-                x + piece_size, y + piece_size))
+            cursor_obj[0] = Rectangle(Point(x, y), Point(x + piece_size, y + piece_size))
             cursor_obj[0].setWidth(spacer * 3)
-            cursor_obj[0].setOutline(
-                color_rgb(cursor_color_rgb[0], cursor_color_rgb[1], cursor_color_rgb[2]))
+            cursor_obj[0].setOutline(color_rgb(cursor_color_rgb[0], cursor_color_rgb[1], cursor_color_rgb[2]))
             cursor_obj[0].draw(win)
 
             if col_index in (0, 4) or row_index in (0, 4):
@@ -566,6 +554,18 @@ def relative_rotation(from_side, to_side):
 
 
 def translate_col_row(from_side, to_side, from_col, from_row):
+    """ translate col row coordinates from one side to another 
+    keeping piece positions aligned
+
+    Args:
+        from_side (int): source side index
+        to_side (int): target side index
+        from_col (int): source col index
+        from_row (int): source row index
+
+    Returns:
+        list: translated col and row index
+    """
     rotated_col_row = [from_col, from_row]
     rotation = relative_rotation(to_side, from_side)
     if not rotation in (90, 270):  # or this_side in (0, 1) or prev_side in (0, 1)
@@ -658,6 +658,15 @@ def navigate_pos(position, direction, side_selected=False):
 
 
 def rotate_direction(side, direction):
+    """ return the relative direction in respect to the default side rotation
+
+    Args:
+        side (int): side index
+        direction (str): Up, Down, Left, Right
+
+    Returns:
+        str: Up, Down, Left, Right
+    """
     direction_to_rotation = {"Up": 0, "Right": 90, "Down": 180, "Left": 270}
     rotation_to_direction = {0: "Up", 90: "Right", 180: "Down", 270: "Left"}
     rotation = direction_to_rotation[direction]
@@ -669,6 +678,17 @@ def rotate_direction(side, direction):
 
 
 def navigate_unfolded(position, direction, side_selected):
+    """ return new cursor position translated from the unfolded cube direction
+
+
+    Args:
+        position (list): source cursor position as side, col and row index
+        direction (str): Up, Down, Left, Right
+        side_selected (int): source cursor side index
+
+    Returns:
+        list: new cursor position as side, col and row index
+    """
     rotated_direction = rotate_direction(position[0], direction)
     return navigate_pos(position,  rotated_direction, side_selected)
 
@@ -930,9 +950,12 @@ def shuffle_cube():
 def new_cube():
     global win
     global cursor_pos
+    global cube
     win.close()
     win = GraphWin("Cube 5x5x5", width, height)
-    win.setBackground(color_rgb(40, 40, 40))
+    win.setBackground(color_rgb(255, 255, 255))
+    cube = [[[[None for i in range(5)] for j in range(5)]
+             for k in range(5)] for l in range(6)]
     init_cube()
     moves.clear()
     display_unfolded_cube("all", cursor_pos)
@@ -1364,8 +1387,6 @@ def solve_cube(cursor_pos, first_color='b'):
                             pass
 
                 # case 2 : check if target side has to be rotated
-                #
-                # and len(misplaced_piece_travels) == 4 :
                 if from_side == to_side:
                     if debug or False:
                         print("    case 2: corner have to be rotated")
@@ -1589,12 +1610,12 @@ def solve_cube(cursor_pos, first_color='b'):
 
 
     # -----------------------------------------------------------------------------------------------------------
-    #   solve 
+    #   solve cube main line 
     # -----------------------------------------------------------------------------------------------------------
     first_side = cursor_pos[0]
     solve_first_center(first_side, first_color)
     solve_first_corners(first_side, first_color)
-    # sovle_first_borders(first_side, first_color)
+    #sovle_first_borders(first_side, first_color)
     solve_middles(first_side)
     solve_row_1_borders(first_side)
     solve_row_2_borders(first_side)
@@ -1606,16 +1627,12 @@ def solve_cube(cursor_pos, first_color='b'):
     solve_rest_middles(first_side)
 
 
-# ******************************************************************************************************************
-#   M A I N L I N E
-# ******************************************************************************************************************
-
 # ------------------------------------------------------------------------------------------------------------------
 #   Gobal variables and initializations
 # ------------------------------------------------------------------------------------------------------------------
 
-# write debug messages to the terminal
-debug = 0
+# write or not debug messages to the terminal and show piece identifiers on the cube
+debug = False
 
 #  the main list modelling the 5 x 5 x 5 cube elements and their positions within the cube
 #
@@ -1716,7 +1733,7 @@ opposite_direction = {"Up": "Down",
 height = 1180
 width = 850
 win = GraphWin("Cube 5x5x5", width, height)
-win.setBackground(color_rgb(50, 50, 50))
+win.setBackground(color_rgb(63, 63, 63))
 win_bottom_status_height = 80
 cursor_color_rgb = [255, 255, 255]
 
@@ -1724,7 +1741,7 @@ cursor_color_rgb = [255, 255, 255]
 side_grid_pos = [[1, 2], [1, 0], [0, 2], [2, 2], [1, 3], [1, 1]]
 piece_size = 50
 spacer = 2
-side_spacer = 6
+side_spacer = 5
 side_size = (piece_size + spacer) * 5 + side_spacer
 x_margin = (win.width - 3 * side_size) // 2
 y_margin = (win.height - (win_bottom_status_height + 15) - 4 * side_size) // 2
@@ -1759,52 +1776,55 @@ solve_key = "Return"
 side_selection_keys = ("Control_L", "Control_R")
 key_to_direction = {"w": "Up", "a": "Left", "s": "Down",
                     "d": "Right", "Shift_L": 270, "Shift_R": 90}
-key = "unknown"
 side_selected = False
 
-# main game loop
+# ----------------------------------------------------------------------------------------------------------------
+#   Main loop
+# ----------------------------------------------------------------------------------------------------------------
+key = win.getKey().replace("KP_","")
 while key != "Escape":
 
     # do something only if a relevant key has been pressed
     if key in navigate_keys + move_keys + turn_keys + side_selection_keys \
             or key in (shuffle_key, reverse_key, new_key, solve_key):
 
-        if key in navigate_keys:
+        if key in navigate_keys:    # Up, Down, Left, Right
             cursor_pos = navigate_unfolded(cursor_pos, key, side_selected)
             display_unfolded_cube("cursor", cursor_pos, side_selected)
 
-        elif key in move_keys:
+        elif key in move_keys:      # w, a, s, d 
             cursor_pos = move_from_cursor(
                 cursor_pos, key_to_direction[key], side_selected)
             side_selected = False
             display_unfolded_cube("all", cursor_pos)
 
-        elif key == shuffle_key:
+        elif key == shuffle_key:    # space
             shuffle_cube()
             display_unfolded_cube("cursor", cursor_pos)
 
-        elif key == new_key:
+        elif key == new_key:        # new
             new_cube()
 
-        elif key == reverse_key:
+        elif key == reverse_key:    # r
             reverse_moves()
 
-        elif key in turn_keys:
+        elif key in turn_keys:      # Shift_L, Shift_R
             turn(cursor_pos, key_to_direction[key])
             display_unfolded_cube("all", cursor_pos)
 
-        elif key == solve_key:
+        elif key == solve_key:      # Return
             solve_cube(cursor_pos)
             display_unfolded_cube("cursor", cursor_pos)
 
-        elif key in side_selection_keys:
+        elif key in side_selection_keys:    # Control_L, Control_R 
             if not side_selected:
                 side_selected = True
             else:
                 side_selected = False
+
             display_unfolded_cube("cursor", cursor_pos, side_selected)
 
     # wait for next key-press
-    key = win.getKey()
+    key = win.getKey().replace("KP_","")
 
 win.close()
