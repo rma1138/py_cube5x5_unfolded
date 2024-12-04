@@ -953,7 +953,7 @@ def new_cube():
     global cube
     win.close()
     win = GraphWin("Cube 5x5x5", width, height)
-    win.setBackground(color_rgb(255, 255, 255))
+    win.setBackground(color_rgb(63, 63, 63))
     cube = [[[[None for i in range(5)] for j in range(5)]
              for k in range(5)] for l in range(6)]
     init_cube()
@@ -1632,7 +1632,7 @@ def solve_cube(cursor_pos, first_color='b'):
 # ------------------------------------------------------------------------------------------------------------------
 
 # write or not debug messages to the terminal and show piece identifiers on the cube
-debug = False
+debug = True
 
 #  the main list modelling the 5 x 5 x 5 cube elements and their positions within the cube
 #
@@ -1730,8 +1730,8 @@ opposite_direction = {"Up": "Down",
                       "Right": "Left", "Down": "Up", "Left": "Right"}
 
 # Initialize graphic window
-height = 1180
-width = 850
+height = 870
+width = 620
 win = GraphWin("Cube 5x5x5", width, height)
 win.setBackground(color_rgb(63, 63, 63))
 win_bottom_status_height = 80
@@ -1739,9 +1739,9 @@ cursor_color_rgb = [255, 255, 255]
 
 # Side indexes 0 Up, 1 Down, 2 Left, 3 Right, 4 Front, 5 Back
 side_grid_pos = [[1, 2], [1, 0], [0, 2], [2, 2], [1, 3], [1, 1]]
-piece_size = 50
+piece_size = 36
 spacer = 2
-side_spacer = 5
+side_spacer = 2
 side_size = (piece_size + spacer) * 5 + side_spacer
 x_margin = (win.width - 3 * side_size) // 2
 y_margin = (win.height - (win_bottom_status_height + 15) - 4 * side_size) // 2
