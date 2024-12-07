@@ -1,34 +1,36 @@
 from graphics import GraphWin, color_rgb, Rectangle, Point, Text
 from random import randint
+#from typing import Union
 
 # ------------------------------------------------------------------------------------------------------------------
 #   Helper functions
 # ------------------------------------------------------------------------------------------------------------------
 
-def is_color_adjacient(first_color, second_color, third_color=None):
+def is_color_adjacient(first_color: str, second_color: str, third_color: None | str = None) -> bool:
     """ Check if first side color is adjacient to second and, if provided, to third side color
 
     Args:
-        first_color : color first side
-        second_color: color second side
-        third_color : color third side. Defaults to None.
-    Returns:
-        boolean: are first and second and, if provided, third sides adjacient ?
-    """
+        first_color (str): color second side
+        second_color (str): color second side
+        third_color (None | str, optional): color third side. Defaults to None.
 
-    def is_color_adjacient_2(first_color, second_color):
+    Returns:
+        bool: are first and second and, if provided, third sides adjacient ?
+    """    
+
+    def is_color_adjacient_2(first_color: str, second_color: str) -> bool:
         """ Check if first side is adjacient to second side.
 
         Args:
-            first_color (int): index first side
-            second_color (int): index second side
+            first_color (str): color first side
+            second_color (str): color second side
 
         Returns:
-            boolean: are first and second sides adjacient ?
+            bool: are first and second sides adjacient ?
         """
-        cube_colors_sequences = [["c", "o", "g", "r"]  # cyan, orange, green, red on the first rotation axis
-                                 # cyan, black, green, yellow on the second rotation axis
-                                 , ["c", "b", "g", "y"], ["b", "r", "y", "o"]]  # black, red, yellow, orange on the last rotation axis
+        cube_colors_sequences = [["c", "o", "g", "r"]    # cyan, orange, green, red on the first rotation axis
+                                ,["c", "b", "g", "y"]    # cyan, black, green, yellow on the second rotation axis
+                                ,["b", "r", "y", "o"]]   # black, red, yellow, orange on the last rotation axis
         if first_color == second_color:
             return False
 
@@ -61,7 +63,7 @@ def is_color_adjacient(first_color, second_color, third_color=None):
     return False
 
 
-def reorder(word):
+def reorder(word: str) -> str:
     """ Return sorted character string
 
     Args:
@@ -80,7 +82,7 @@ def reorder(word):
     return (new_word)
 
 
-def border_orientation(first_side, second_side, default_color_side=0):
+def border_orientation(first_side: int, second_side: int, default_color_side: int=0) -> str:
     """ Returns orientation name for border piece based on the first and second side of the piece
         first_side, second_side :
             0 U : up    side
@@ -96,7 +98,7 @@ def border_orientation(first_side, second_side, default_color_side=0):
         second_side (int): index second side
 
     Returns:
-        orientation: N, S, W, E (North, South, West, East)
+        orientation (str): N, S, W, E (North, South, West, East)
     """
     first_second = str(first_side) + str(second_side)
     orientation = ""
@@ -112,14 +114,15 @@ def border_orientation(first_side, second_side, default_color_side=0):
             rotation = side_rotation[default_color_side]
             if rotation != 0:
                 rotation = 360 - rotation
-                rotated_orientation = {90: {"N": "E", "E": "S", "S": "W", "W": "N"}, 270: {
-                    "N": "W", "W": "S", "S": "E", "E": "N"}, 180: {"N": "S", "E": "W", "S": "N", "W": "E"}}
+                rotated_orientation = { 90:  {"N": "E", "E": "S", "S": "W", "W": "N"}, 
+                                        270: {"N": "W", "W": "S", "S": "E", "E": "N"}, 
+                                        180: {"N": "S", "E": "W", "S": "N", "W": "E"}}
                 orientation = rotated_orientation[rotation][orientation]
 
     return orientation
 
 
-def corner_orientation(first, second, third, default_color_side=0):
+def corner_orientation(first: int, second: int, third: int, default_color_side: int =0) -> str:
     """ Returns orientation name for corner piece based on first, second and third side of the piece
 
     Args:
@@ -129,7 +132,7 @@ def corner_orientation(first, second, third, default_color_side=0):
         default_color_side (int): default color side. Default 0 
 
     Returns:
-        orientation: NW, SW, EN, ES (North West, South West, North East, South Est)
+        orientation (str): NW, SW, EN, ES (North West, South West, North East, South Est)
         if side is specified, the relative side roation is considered (in border_orientation)
     """
     orientation = border_orientation(first, second, default_color_side)
@@ -137,14 +140,14 @@ def corner_orientation(first, second, third, default_color_side=0):
     return reorder(orientation)
 
 
-def default_side(color):
+def default_side(color: str) -> int:
     """ Returns default side based on the color
 
     Args:
         color (str): color name (b, c, r, g, y, o)
 
     Returns:
-        int: index default side
+        side index (int): index default side
     """
     cube_sides = {"U": 0, "D": 1, "F": 4, "B": 5, "L": 2, "R": 3}
     # black is on the up side
@@ -167,9 +170,7 @@ def init_cube():
     for piece in cube_centers:
         side = default_side(piece)
         # for centers color = piece (eg: "b", "c", ...)
-        cube[side][2][2][0] = piece
-        cube[side][2][2][1] = piece
-        cube[side][2][2][2] = 1             # flagged as changed
+        cube[side][2][2] = [piece, piece, 1, None, None] 
 
     # set default cube for middles (eg: "b11", "b12", "b13", "b21", "b23", "b31", "b32", "b33", ...)
     for piece in cube_middles:
@@ -177,9 +178,7 @@ def init_cube():
         col = int(piece[1])
         row = int(piece[2])
         # for middles color = first letter from piece name (eg: "b11")
-        cube[side][col][row][0] = piece[0]
-        cube[side][col][row][1] = piece
-        cube[side][col][row][2] = 1         # flagged as changed
+        cube[side][col][row] = [piece[0], piece, 1, None, None]
 
     # set default cube for borders (eg: "bg0", "bg1", "bg2", "rg0", "rg1", ... )
     for piece in cube_borders:
@@ -225,9 +224,7 @@ def init_cube():
                 else:
                     row = 3 - offset
 
-            cube[color_side[0]][col][row][0] = color_side[2]
-            cube[color_side[0]][col][row][1] = piece
-            cube[color_side[0]][col][row][2] = 1        # flagged as changed
+            cube[color_side[0]][col][row] = [color_side[2], piece, 1, None, None]
 
     # set default cube for corners ("bco", "bgo", "bcr", "bgr", "coy", "cry", "goy", "gry")
     for piece in cube_corners:
@@ -291,15 +288,15 @@ def init_cube():
                     i = i + 1
 
 
-def rotate_side(col_row, rotation=0):
+def rotate_side(col_row: list[int], rotation: int =0):
     """ Returns rotated col and row index side coordinate in respect to the given side rotation.
         If no rotation spefice col and row index remain unchanged.
 
     Args:
-        col_row : list (2) of col and row index
-        rotation : relative rotation to side 0 in degree 
+        col_row (list[int]) : list (2) of col and row index
+        rotation (int): relative rotation to side 0 in degree 
     Returns:
-        new_col_row : list (2) of rotated col and row index
+        new_col_row (list[int]) : list (2) of rotated col and row index
     """
     new_col_row = [0, 0]
     if rotation == 0 or abs(rotation) % 360 == 0:      # no rotation
@@ -321,7 +318,7 @@ def rotate_side(col_row, rotation=0):
     return new_col_row
 
 
-def display_unfolded_cube(scope="cube", cursor_pos=None, side_selected=False, side_sequence=[0, 3, 4, 2, 5, 1]):
+def display_unfolded_cube(scope: str ="cube", cursor_pos: list[int] | None =None, side_selected: bool =False, side_sequence: list[int] =[0, 3, 4, 2, 5, 1]):
     """ Display cube unfolded 2D
 
     Args:
@@ -339,10 +336,18 @@ def display_unfolded_cube(scope="cube", cursor_pos=None, side_selected=False, si
     global last_move_obj
     global cube
 
-    color_codes = {"c": color_rgb(0, 200, 255), "g": color_rgb(0, 200, 0), "o": color_rgb(
-        255, 140, 0), "r": color_rgb(200, 0, 0), "b": color_rgb(0, 0, 0), "y": color_rgb(255, 255, 0)}
-    background_color_codes = {"c": color_rgb(0, 0, 0), "g": color_rgb(0, 0, 0), "o": color_rgb(
-        0, 0, 0), "r": color_rgb(155, 255, 255), "b": color_rgb(255, 255, 255), "y": color_rgb(0, 0, 255)}
+    color_codes = {"c": color_rgb(0, 200, 255), 
+                   "g": color_rgb(0, 200, 0), 
+                   "o": color_rgb(255, 140, 0), 
+                   "r": color_rgb(200, 0, 0), 
+                   "b": color_rgb(0, 0, 0), 
+                   "y": color_rgb(255, 255, 0)}
+    background_color_codes = {"c": color_rgb(0, 0, 0), 
+                              "g": color_rgb(0, 0, 0), 
+                              "o": color_rgb(0, 0, 0), 
+                              "r": color_rgb(155, 255, 255), 
+                              "b": color_rgb(255, 255, 255), 
+                              "y": color_rgb(0, 0, 255)}
 
     def get_x_y(side_index, col_index, row_index, consider_side_rotation=True):
         """ Return x,y coordinates from sid, col, row and side rotation
@@ -397,7 +402,6 @@ def display_unfolded_cube(scope="cube", cursor_pos=None, side_selected=False, si
                     for row in col:
                         row_index = col.index(row)
                         if row[2] == 1:                        # piece has changed
-                            color = row[0]
                             # coordinate previous rectange (p1)
                             x0, y0 = 0, 0
                             x, y = get_x_y(side_index, col_index, row_index)
@@ -406,29 +410,33 @@ def display_unfolded_cube(scope="cube", cursor_pos=None, side_selected=False, si
                                 row[3].move(x-x0, y-y0)
 
                             else:
-                                row[3] = Rectangle(Point(x, y), Point(
-                                    x + piece_size, y + piece_size))
-                                row[3].setFill(color_codes[color])
+                                #row = [row[0], row[1], row[2], None, row[4] ]
+                                row[3] = Rectangle(Point(x, y),  # type: ignore
+                                              Point(x + piece_size, y + piece_size))
+                                row[3].setFill(color_codes[str(row[0])])
                                 row[3].draw(win)
 
                             if row[4] != None:
                                 row[4].move(x-x0, y-y0)
 
                             else:
-                                # pass
+#                                pass
                                 if debug or False: 
+                                    #row = [ row[0], row[1], row[2], row[3], None ]
                                     center = row[3].getCenter()
-                                    # row[4] = Text(Point(center.x, center.y), str(col_index) + str(row_index))
-                                    row[4] = Text(Point(center.x, center.y), row[1])
-                                    row[4].setTextColor(background_color_codes[color])
+                                    row[4] = Text(Point(center.x, center.y), row[1]) # type: ignore
+                                    row[4].setTextColor(background_color_codes[str(row[0])])
                                     row[4].draw(win)
 
-                            row[2] = 0
+                            row = [row[0], row[1], 0, row[3], row[4]]
 
     if scope in ("cursor", "all"):
-        side_index = cursor_pos[0]
+        side_index = 0
+        if cursor_pos != None:
+            side_index = cursor_pos[0]
 
         if side_selected:
+            #if cursor_obj[0] != None:
             cursor_obj[0].undraw()
             if cursor_obj[1] != None:
                 cursor_obj[1].undraw()
@@ -445,8 +453,11 @@ def display_unfolded_cube(scope="cube", cursor_pos=None, side_selected=False, si
             cursor_obj[0].draw(win)
 
         else:
-            col_index = cursor_pos[1]
-            row_index = cursor_pos[2]
+            col_index, row_index = 2,2
+            if cursor_pos != None:
+                col_index = cursor_pos[1]
+                row_index = cursor_pos[2]
+
             x, y = get_x_y(side_index, col_index, row_index)
             cursor_obj[0] = Rectangle(Point(x, y), Point(x + piece_size, y + piece_size))
             cursor_obj[0].setWidth(spacer * 3)
@@ -484,10 +495,12 @@ def display_unfolded_cube(scope="cube", cursor_pos=None, side_selected=False, si
             if cursor_pos_piece_obj != None:
                 cursor_pos_piece_obj.undraw()
 
-            cursor_pos_piece_obj = Text(Point(win.width - 130, win.height - win_bottom_status_height + 20), "piece : "
-                                        + str(cube[cursor_pos[0]][cursor_pos[1]][cursor_pos[2]][1]).rjust(5, " "))
-            cursor_pos_piece_obj.setTextColor(color_rgb(255, 255, 255))
-            cursor_pos_piece_obj.draw(win)
+            cursor_pos_piece_obj = None
+            if cursor_pos != None: 
+                cursor_pos_piece_obj = Text(Point(win.width - 130, win.height - win_bottom_status_height + 20), "piece : "
+                                            + str(cube[cursor_pos[0]][cursor_pos[1]][cursor_pos[2]][1]).rjust(5, " "))
+                cursor_pos_piece_obj.setTextColor(color_rgb(255, 255, 255))
+                cursor_pos_piece_obj.draw(win)
 
             if last_move_obj != None:
                 last_move_obj.undraw()
@@ -553,7 +566,7 @@ def relative_rotation(from_side, to_side):
     return rotation
 
 
-def translate_col_row(from_side, to_side, from_col, from_row):
+def translate_col_row(from_side: int, to_side: int, from_col: int, from_row: int) -> list[int]:
     """ translate col row coordinates from one side to another 
     keeping piece positions aligned
 
@@ -564,7 +577,7 @@ def translate_col_row(from_side, to_side, from_col, from_row):
         from_row (int): source row index
 
     Returns:
-        list: translated col and row index
+        col_row (list[int]): translated col and row index
     """
     rotated_col_row = [from_col, from_row]
     rotation = relative_rotation(to_side, from_side)
@@ -704,7 +717,13 @@ def rotate(side, rotation):
             cube[side][rotated_col_row[0]][rotated_col_row[1]][2] = 1
 
 
-def move(position, direction):
+def move(position: list[int], direction: str):
+    """ move from one position, identified by side, col and row index towards direction
+
+    Args:
+        position (list[int]): side, col, pos indexes
+        direction (str): direction. "Up", "Down", "Left", "Richt
+    """    
     global cursor_obj
     global cube
 
@@ -751,20 +770,20 @@ def move(position, direction):
     move_cycle = side_move_cycle[opposite_direction[direction]]
 
     this_side = position[0]
-    this_col = position[1]
-    this_row = position[2]
+    this_col  = position[1]
+    this_row  = position[2]
     prev_sides = move_cycle[this_side]
 
-    this_cols = [None for i in range(5)]
-    this_rows = [None for i in range(5)]
+    this_cols = []
+    this_rows = []
     for i in range(5):
         if direction in ("Up", "Down"):
-            this_cols[i] = this_col
-            this_rows[i] = i
+            this_cols.append(this_col)
+            this_rows.append(i)
 
         else:
-            this_cols[i] = i
-            this_rows[i] = this_row
+            this_cols.append(i)
+            this_rows.append(this_row)
 
     adjacient_left_direction = {
         "Up": adjacient_left_side_up_down, "Down": adjacient_left_side_up_down}
@@ -775,10 +794,10 @@ def move(position, direction):
     adjacient_down_direction = {
         "Left": adjacient_down_side_left_right, "Right": adjacient_down_side_left_right}
 
-    adjacient_left = None
-    adjacient_right = None
-    adjacient_up = None
-    adjacient_down = None
+    adjacient_left = {}
+    adjacient_right = {}
+    adjacient_up = {}
+    adjacient_down = {}
     if direction in ("Up", "Down"):
         adjacient_left = adjacient_left_direction[direction]
         adjacient_right = adjacient_right_direction[direction]
@@ -798,29 +817,31 @@ def move(position, direction):
 
     for side_index in range(4):
         prev_side = prev_sides[side_index]
-        prev_cols = [None for col in range(5)]
-        prev_rows = [None for row in range(5)]
+        prev_cols = [-1 for col in range(5)]
+        prev_rows = [-1 for row in range(5)]
         if side_index < 3:
             # first 3 sides
             for col_row_index in range(5):
-                this_col = this_cols[col_row_index]
-                this_row = this_rows[col_row_index]
+                this_c = this_cols[col_row_index]
+                this_r = this_rows[col_row_index]
                 [prev_col, prev_row] = translate_col_row(
-                    this_side, prev_side, this_col, this_row)
-                cube[this_side][this_col][this_row] = cube[prev_side][prev_col][prev_row]
-                cube[this_side][this_col][this_row][2] = 1
+                    this_side, prev_side, this_c, this_r)
+                cube[this_side][this_c][this_r] = cube[prev_side][prev_col][prev_row]
+                r = cube[this_side][this_c][this_r] 
+                cube[this_side][this_c][this_r] = [ r[0], r[1], 1, r[3], r[4] ]
                 prev_cols[col_row_index] = prev_col
                 prev_rows[col_row_index] = prev_row
 
         else:
             # last side
             for col_row_index in range(5):
-                this_col = this_cols[col_row_index]
-                this_row = this_rows[col_row_index]
+                this_c = this_cols[col_row_index]
+                this_r = this_rows[col_row_index]
                 [prev_col, prev_row] = translate_col_row(
-                    this_side, prev_side, this_col, this_row)
-                cube[this_side][this_col][this_row] = saved_side[prev_col][prev_row]
-                cube[this_side][this_col][this_row][2] = 1
+                    this_side, prev_side, this_c, this_r)
+                cube[this_side][this_c][this_r] = saved_side[prev_col][prev_row]
+                r = cube[this_side][this_c][this_r] 
+                cube[this_side][this_c][this_r] = [ r[0], r[1], 1, r[3], r[4] ]
                 prev_cols[col_row_index] = prev_col
                 prev_rows[col_row_index] = prev_row
 
@@ -867,10 +888,7 @@ def move(position, direction):
     if debug or False:
         print("        move:", len(moves)-1, moves[len(moves)-1])
 
-    # win.getKey()
-
-
-def move_from_cursor(position, direction, side_selected=False):
+def move_from_cursor(position: list[int], direction: str, side_selected: bool =False) -> list[int]:
     side = position[0]
     col = position[1]
     row = position[2]
@@ -897,7 +915,7 @@ def move_from_cursor(position, direction, side_selected=False):
                         and cube[i][j][k][0] == color:
                     new_position = [i, j, k]
 
-    return position
+    return new_position
 
 
 def turn(position, rotation):
@@ -921,14 +939,14 @@ def turn(position, rotation):
 
     if rotation == 180:
         rotate_from_pos = rotate_from_pos_dict[90]
-        from_pos = rotate_from_pos[this_side][0]
+        from_pos: list[int] = rotate_from_pos[this_side][0]
         direction = rotate_from_pos[this_side][1]
         for i in range(2):
             move(from_pos, direction)
 
     else:
         rotate_from_pos = rotate_from_pos_dict[rotation]
-        from_pos = rotate_from_pos[this_side][0]
+        from_pos: list[int] = rotate_from_pos[this_side][0]
         direction = rotate_from_pos[this_side][1]
         move(from_pos, direction)
 
@@ -954,7 +972,7 @@ def new_cube():
     win.close()
     win = GraphWin("Cube 5x5x5", width, height)
     win.setBackground(color_rgb(63, 63, 63))
-    cube = [[[[None for i in range(5)] for j in range(5)]
+    cube = [[[[any for i in range(5)] for j in range(5)]
              for k in range(5)] for l in range(6)]
     init_cube()
     moves.clear()
@@ -997,33 +1015,38 @@ def solve_cube(cursor_pos, first_color='b'):
             boolean: are first and second and, if provided, third sides adjacient ?
         """
         sides = [first_side, second_side, third_side]
-        colors = [None, None, None]
+        colors = []
         for i in range(3):
             for color in cube_colors:
                 if sides[i] == default_side(color):
-                    colors[i] = color
+                    colors.append(color)
+        if len(colors) == 3:
+            return is_color_adjacient(colors[0], colors[1], colors[2])
+        elif len(colors) == 2:
+            return is_color_adjacient(colors[0], colors[1], None)
+        else:
+            return False
 
-        return is_color_adjacient(colors[0], colors[1], colors[2])
 
-
-    def find_piece(piece, color=None):
-        """ return position of a given piece
+    def find_piece(piece: str, color: str | None = None) -> list[int]:
+        """_summary_
 
         Args:
-            piece (str): piece identifier
-            color (str, optional): side color filter. Defaults to None.
+            piece (str): piece 
+            color (str | None, optional): color. Defaults to None.
 
         Returns:
-            list: position as side, col and row index
-        """
-        for side_index in range(6):
+            None | list[int]: side, col and row 
+        """        
+        for side_index in range(6):  
             for col_index in range(5):
                 for row_index in range(5):
                     if cube[side_index][col_index][row_index][1] == piece:
                         if color == None \
-                                or color == cube[side_index][col_index][row_index][0]:
-                            
+                                or color == cube[side_index][col_index][row_index][0]:                            
                             return [side_index, col_index, row_index]
+         
+        return [-1, -1, -1]    # Bug case
 
 
     def relative_direction(from_side, to_side):
@@ -1117,9 +1140,9 @@ def solve_cube(cursor_pos, first_color='b'):
         Returns:
             bool: is piece aligned?
         """        
-        aligned = False
+        aligned   = False
         from_side = from_pos[0]
-        to_side = to_pos[0]
+        to_side   = to_pos[0]
         translated_col_row = translate_col_row(from_side
                                                ,to_side
                                                ,from_pos[1]
@@ -1141,9 +1164,13 @@ def solve_cube(cursor_pos, first_color='b'):
         for color in piece:
             if color != first_color:
                 from_adjacient_pos = find_piece(piece, color)
-                from_adjacient_side = from_adjacient_pos[0]
-                from_adjacient_col = from_adjacient_pos[1]
-                from_adjacient_row = from_adjacient_pos[2]
+                from_adjacient_side = 0
+                from_adjacient_col  = 0
+                from_adjacient_row  = 0    
+                if from_adjacient_pos != None:
+                    from_adjacient_side = from_adjacient_pos[0]
+                    from_adjacient_col = from_adjacient_pos[1]
+                    from_adjacient_row = from_adjacient_pos[2]
                 turn_rotation = 270
                 direction = relative_direction(from_adjacient_side, to_side)
                 if direction == "Up" and from_adjacient_col == 4 or \
@@ -1316,7 +1343,7 @@ def solve_cube(cursor_pos, first_color='b'):
     # -----------------------------------------------------------------------------------------------------------
     #   solve functions
     # -----------------------------------------------------------------------------------------------------------
-    def solve_first_center(first_side, first_color):
+    def solve_first_center(first_side: int, first_color: str):
         """ solve center piece of the first side
 
         Args:
@@ -1327,10 +1354,11 @@ def solve_cube(cursor_pos, first_color='b'):
             print("solve_first_side_center")
 
         pos = find_piece(first_color)
-        while first_side != pos[0]:
-            move(pos, relative_direction(pos[0], first_side))
-            display_unfolded_cube("cube")
-            pos = find_piece(first_color)
+        if pos != None and len(pos) == 3: 
+            while first_side != pos[0]:
+                move(pos, relative_direction(pos[0], first_side))
+                display_unfolded_cube("cube")
+                pos = find_piece(first_color)
 
 
     def solve_first_corners(first_side, first_color):
@@ -1521,7 +1549,7 @@ def solve_cube(cursor_pos, first_color='b'):
                     move_aligned_border(from_aligned_pos, to_aligned_pos)
                     break   # skip and re-evaluate remaining misplaced pieace
 
-                if not is_border_on_bottom_row(piece, from_pos, to_side, first_color) and \
+                if not is_piece_on_bottom_row(piece, from_pos, to_side, first_color) and \
                         not from_side == opposite_side[to_side]:
                     if debug or False:
                         print("    case 3: border", piece,
@@ -1651,10 +1679,14 @@ debug = True
 #                           0 face color
 #                           1 piece
 #                           2 postition changed flag (0: unchanged, 1: changed)
-#                           4 graphic_object reference rectangle
-#                           5 graphic object reference text
-cube = [[[[None for i in range(5)] for j in range(5)]
-         for k in range(5)] for l in range(6)]
+#                           3 graphic_object reference rectangle
+#                           4 graphic object reference text
+element_values = [' ', ' ', 0, None, None]
+cube = [[[[ e 
+        for e in element_values ] 
+            for r in range(5)]
+                for c in range(5)]
+                    for s in range(6)]
 
 # cube colors and pieces
 #   c : cyan
@@ -1674,6 +1706,7 @@ cube_colors = ["c", "g", "o", "r", "b", "y"]
 #   corners : color first + color secound + color third side
 #               (sorted for unique id, regardless which direction the cube is searched)
 cube_centers = list(cube_colors)
+cube_centers = cube_colors.copy()
 cube_centers.sort()
 cube_middles = [color+str(col)+str(row)
                 for color in cube_colors
@@ -1733,7 +1766,7 @@ opposite_direction = {"Up": "Down",
 height = 870
 width = 620
 win = GraphWin("Cube 5x5x5", width, height)
-win.setBackground(color_rgb(63, 63, 63))
+win.setBackground(color_rgb(0, 0, 63))
 win_bottom_status_height = 80
 cursor_color_rgb = [255, 255, 255]
 
@@ -1741,13 +1774,13 @@ cursor_color_rgb = [255, 255, 255]
 side_grid_pos = [[1, 2], [1, 0], [0, 2], [2, 2], [1, 3], [1, 1]]
 piece_size = 36
 spacer = 2
-side_spacer = 2
+side_spacer = 4
 side_size = (piece_size + spacer) * 5 + side_spacer
 x_margin = (win.width - 3 * side_size) // 2
-y_margin = (win.height - (win_bottom_status_height + 15) - 4 * side_size) // 2
+y_margin = (win.height - (win_bottom_status_height + 10) - 4 * side_size) // 2
 
 # cursor, rectangle and text object references (from graphics)
-cursor_obj = [None, None, None]
+cursor_obj = [any, None, None]
 cursor_pos_obj = None
 last_move_obj = None
 cursor_pos_piece_obj = None
