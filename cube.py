@@ -288,7 +288,7 @@ def init_cube():
                     i = i + 1
 
 
-def rotate_side(col_row: list[int], rotation: int =0):
+def rotate_side(col_row: list[int], rotation: int =0) -> list[int]:
     """ Returns rotated col and row index side coordinate in respect to the given side rotation.
         If no rotation spefice col and row index remain unchanged.
 
@@ -302,20 +302,24 @@ def rotate_side(col_row: list[int], rotation: int =0):
     if rotation == 0 or abs(rotation) % 360 == 0:      # no rotation
         new_col_row[0] = col_row[0]
         new_col_row[1] = col_row[1]
+        return new_col_row
 
     elif abs(rotation) == 180:                         # 180 rotation
         new_col_row[0] = 4 - col_row[0]
         new_col_row[1] = 4 - col_row[1]
+        return new_col_row
 
     elif rotation in (90, -270):                       # 90 clockwise
         new_col_row[0] = 4 - col_row[1]
         new_col_row[1] = col_row[0]
+        return new_col_row
 
     elif rotation in (-90, 270):                       # 90 anti-clockwise or 270 clocwie
         new_col_row[0] = col_row[1]
         new_col_row[1] = 4 - col_row[0]
+        return new_col_row
 
-    return new_col_row
+    raise Exception(f"rotate_side({col_row}, {rotation}): case not handled! Check and fix.")
 
 
 def display_unfolded_cube(scope: str ="cube", cursor_pos: list[int] | None =None, side_selected: bool =False, side_sequence: list[int] =[0, 3, 4, 2, 5, 1]):
@@ -550,7 +554,16 @@ def display_keys_usage():
     t4.draw(win)
 
 
-def relative_rotation(from_side, to_side):
+def relative_rotation(from_side: int, to_side: int) -> int:
+    """ Returns the relative rotation (360 degrees base) between to_side and from side.
+
+    Args:
+        from_side (int): from side index
+        to_side (int): to side index
+
+    Returns:
+        int: rotation in degree (0, 90, 180, 270)
+    """    
     """ Returns the relative rotation (360 degrees base) between to_side and from side.
 
     Args:
@@ -579,46 +592,45 @@ def translate_col_row(from_side: int, to_side: int, from_col: int, from_row: int
     Returns:
         col_row (list[int]): translated col and row index
     """
-    rotated_col_row = [from_col, from_row]
     rotation = relative_rotation(to_side, from_side)
     if not rotation in (90, 270):  # or this_side in (0, 1) or prev_side in (0, 1)
-        rotated_col_row = rotate_side([from_col, from_row], rotation)
+        return rotate_side([from_col, from_row], rotation)
 
     elif from_side == 0 or to_side == 0:
         rotation = rotation - 180
         if rotation < 0:
             rotation = 360 + rotation
 
-        rotated_col_row = rotate_side([from_col, from_row], rotation)
+        return rotate_side([from_col, from_row], rotation)
 
     elif from_side == 1 or to_side == 1:
-        rotated_col_row = rotate_side([from_col, from_row], rotation)
+        return rotate_side([from_col, from_row], rotation)
+    
+    else:
+        return [from_col, from_row]
 
-    return rotated_col_row
 
-
-def navigate_pos(position, direction, side_selected=False):
+def navigate_pos(position: list[int], direction: str, side_selected: bool=False) -> list[int]:
     """ Navigate cursor from current position to the given direction
 
     Args:
-        position (list): [side, row, col]
-        direction (string): "Up", "Down", "Left", "Right"
-        side_selected (bool, optional): _description_. Defaults to False.
+        position (list[int]): [side, row, col]
+        direction (str): "Up", "Down", "Left", "Right"
+        side_selected (bool, optional): is side selected. Defaults to False.
 
     Returns:
-        list: new position as side, col and row indexes
-    """
-
+        list[int]: new position as side, col and row indexes
+    """    
     # next side (direction relative to side orientation)
-    next_side_up_rotation = {0: 5, 5: 0, 1: 4, 4: 0, 2: 0, 3: 0}
-    next_side_down_rotation = {0: 4, 4: 1, 1: 5, 5: 1, 2: 1, 3: 1}
-    next_side_right_rotation = {0: 3, 3: 5, 5: 2, 2: 4, 4: 3, 1: 3}
-    next_side_left_rotation = {0: 2, 2: 5, 5: 3, 3: 4, 4: 2, 1: 2}
+    next_side_up_rotation       = {0: 5, 5: 0, 1: 4, 4: 0, 2: 0, 3: 0}
+    next_side_down_rotation     = {0: 4, 4: 1, 1: 5, 5: 1, 2: 1, 3: 1}
+    next_side_right_rotation    = {0: 3, 3: 5, 5: 2, 2: 4, 4: 3, 1: 3}
+    next_side_left_rotation     = {0: 2, 2: 5, 5: 3, 3: 4, 4: 2, 1: 2}
     rotation = 0
     current_side = position[0]
-    current_col = position[1]
-    current_row = position[2]
-    pos = [0, 2, 2]
+    current_col  = position[1]
+    current_row  = position[2]
+    pos          = [0, 2, 2]
 
     # find out col and row chagnes based on the direation
     direction_to_col_row_change = {
@@ -628,7 +640,7 @@ def navigate_pos(position, direction, side_selected=False):
     next_side = position[0]
 
     if current_col + col_change >= 0 and current_col + col_change <= 4 \
-            and current_row + row_change >= 0 and current_row + row_change <= 4 \
+        and current_row + row_change >= 0 and current_row + row_change <= 4 \
         and not side_selected:
         # same side but differen position
         pos[0] = current_side
@@ -670,8 +682,8 @@ def navigate_pos(position, direction, side_selected=False):
     return pos
 
 
-def rotate_direction(side, direction):
-    """ return the relative direction in respect to the default side rotation
+def rotate_direction(side: int, direction: str) -> str:
+    """ Return the relative direction in respect to the default side rotation
 
     Args:
         side (int): side index
@@ -690,31 +702,31 @@ def rotate_direction(side, direction):
     return rotation_to_direction[rotation]
 
 
-def navigate_unfolded(position, direction, side_selected):
-    """ return new cursor position translated from the unfolded cube direction
-
+def navigate_unfolded(position: list[int], direction: str, side_selected: bool) -> list[int]:
+    """ Return new cursor position translated from the unfolded cube direction
 
     Args:
-        position (list): source cursor position as side, col and row index
+        position (list[int]): source cursor position as side, col and row index
         direction (str): Up, Down, Left, Right
-        side_selected (int): source cursor side index
+        side_selected (bool): is the whole side select (contol key)
 
     Returns:
-        list: new cursor position as side, col and row index
-    """
+        list[int]: new position
+    """    
     rotated_direction = rotate_direction(position[0], direction)
     return navigate_pos(position,  rotated_direction, side_selected)
 
 
-def rotate(side, rotation):
+def rotate(side: int, rotation: int):
+
     saved_side = [[cube[side][col][row].copy() for row in range(5)]
                   for col in range(5)]
     for col in range(5):
         for row in range(5):
-            rotated_col_row = rotate_side([col, row], rotation)
-            cube[side][rotated_col_row[0]][rotated_col_row[1]
-                                           ] = saved_side[col][row].copy()
-            cube[side][rotated_col_row[0]][rotated_col_row[1]][2] = 1
+            rotated_col_row                                       = rotate_side([col, row], rotation)
+            cube[side][rotated_col_row[0]][rotated_col_row[1]]    = saved_side[col][row].copy()
+            r = cube[side][rotated_col_row[0]][rotated_col_row[1]]
+            cube[side][rotated_col_row[0]][rotated_col_row[1]] = [ r[0], r[1], 1, r[3], r[4] ]
 
 
 def move(position: list[int], direction: str):
@@ -888,6 +900,7 @@ def move(position: list[int], direction: str):
     if debug or False:
         print("        move:", len(moves)-1, moves[len(moves)-1])
 
+
 def move_from_cursor(position: list[int], direction: str, side_selected: bool =False) -> list[int]:
     side = position[0]
     col = position[1]
@@ -991,7 +1004,7 @@ def reverse_moves():
     display_unfolded_cube("cursor", cursor_pos)
 
 
-def solve_cube(cursor_pos, first_color='b'):
+def solve_cube(cursor_pos: list[int], first_color: str='b'):
     """ Solve the cube using the "human" method
 
     Args:
@@ -1003,7 +1016,7 @@ def solve_cube(cursor_pos, first_color='b'):
     # -----------------------------------------------------------------------------------------------------------
     #   solve cube helper functions
     # -----------------------------------------------------------------------------------------------------------
-    def is_side_adjacient(first_side, second_side, third_side=None):
+    def is_side_adjacient(first_side: int, second_side: int, third_side: int | None =None) -> bool:
         """ Check if first side is adjacient to second and, if provided, to third side
             The sides are identified by their side indicies. See cube definition further above
 
@@ -1045,11 +1058,11 @@ def solve_cube(cursor_pos, first_color='b'):
                         if color == None \
                                 or color == cube[side_index][col_index][row_index][0]:                            
                             return [side_index, col_index, row_index]
-         
-        return [-1, -1, -1]    # Bug case
 
+        raise Exception(f"find_piece({piece}, {color}): case not handled!. Check and fix")
+        
 
-    def relative_direction(from_side, to_side):
+    def relative_direction(from_side: int, to_side: int) -> str:
         """ Return the relative direction form one to another side
 
         Args:
@@ -1059,26 +1072,25 @@ def solve_cube(cursor_pos, first_color='b'):
         Returns:
             str: Up, Down, Left, Right
         """
-        direction = None
         if to_side == 0:
-            direction = "Up"
-
+            if debug or False:
+                print("    from side", from_side, "to side",to_side, "direction Up")
+            return "Up"
         elif to_side == 1:
-            direction = "Down"
-
+            if debug or False:
+                print("    from side", from_side, "to side",to_side, "direction Down")
+            return "Down"
         else:
-            to_from_side_dict = {2: {0: "Left",  1: "Left",  5: "Right", 4: "Left",  3: "Down"}, 3: {0: "Right", 1: "Right", 5: "Left",  4: "Right", 2: "Up"}, 4: {
-                0: "Down",  1: "Up",    3: "Left",  2: "Right", 5: "Right"}, 5: {0: "Up",    1: "Down",   3: "Right", 2: "Left",  4: "Left"}}
-            direction = to_from_side_dict[to_side][from_side]
-
-        if debug or False:
-            print("    from side", from_side, "to side",
-                  to_side, "direction", direction)
-
-        return direction
+            to_from_side_dict ={2: {0: "Left",  1: "Left",  5: "Right", 4: "Left",  3: "Down"}, 
+                                3: {0: "Right", 1: "Right", 5: "Left",  4: "Right", 2: "Up"}, 
+                                4: {0: "Down",  1: "Up",    3: "Left",  2: "Right", 5: "Right"}, 
+                                5: {0: "Up",    1: "Down",  3: "Right", 2: "Left",  4: "Left"}}
+            if debug or False:
+                print("    from side", from_side, "to side",to_side, "direction", to_from_side_dict[to_side][from_side])
+            return to_from_side_dict[to_side][from_side]
 
 
-    def is_piece_reversed(piece, side, side_color):
+    def is_piece_reversed(piece: str, side: int, side_color: str) -> bool:
         """ find if a piece is reversed in respect to a side and color
 
         Args:
@@ -1101,7 +1113,7 @@ def solve_cube(cursor_pos, first_color='b'):
         return reversed
 
 
-    def is_piece_on_bottom_row(piece, from_pos, to_side, side_color):
+    def is_piece_on_bottom_row(piece: str, from_pos: list[int], to_side: int, side_color: str) -> bool:
         """ find if a piece is on the bottom row in respect to teh target side and color
 
         Args:
@@ -1130,7 +1142,7 @@ def solve_cube(cursor_pos, first_color='b'):
         return on_bottom_row
 
 
-    def is_piece_aligned(from_pos, to_pos):
+    def is_piece_aligned(from_pos: list[int], to_pos: list[int]) -> bool:
         """ find if a piece is aligned below its target position
 
         Args:
@@ -1153,14 +1165,14 @@ def solve_cube(cursor_pos, first_color='b'):
         return aligned
 
 
-    def move_opposite_corner_to_bottom_row(piece, from_pos, to_side):
-        """ move corner from the opposite side to the bottom row, in respect to the target side 
+    def move_opposite_corner_to_bottom_row(piece: str, from_pos: list[int], to_side: int):
+        """ move corner from the opposite side to the bottom row, in respect to the target side
 
         Args:
             piece (str): piece identfier
-            from_pos (list): source position as side, col and row index
+            from_pos (list[int]): source position as side, col and row index
             to_side (int): target side index
-        """
+        """        
         for color in piece:
             if color != first_color:
                 from_adjacient_pos = find_piece(piece, color)
@@ -1193,7 +1205,13 @@ def solve_cube(cursor_pos, first_color='b'):
                 break  # do not repeat fo the second adjacient side
 
 
-    def move_aligned_corner(from_pos, to_pos):
+    def move_aligned_corner(from_pos: list[int], to_pos: list[int]):
+        """ move corner previously aligned underneath to target corner position
+
+        Args:
+            from_pos (list[int]): source position (side, col, row indexes)
+            to_pos (list[int]): target position (side, col, row indexes)
+        """        
         from_side = from_pos[0]
         from_col = from_pos[1]
         from_row = from_pos[2]
@@ -1281,7 +1299,7 @@ def solve_cube(cursor_pos, first_color='b'):
         display_unfolded_cube("cube")
 
 
-    def fill_piece_travels(color, pieces, side):
+    def fill_piece_travels(color: str, pieces: list[str], side: int) -> list[str, list[int], list[int]]:
         # find misplaced piece from / to positions an keep them in piece_travels list
         piece_travels = []
 
@@ -1307,9 +1325,11 @@ def solve_cube(cursor_pos, first_color='b'):
                             break
 
         if pieces[0] in cube_borders:
-            # cube_corners
-            border_col_row_dict = {"N": [1, 0], "E": [
-                4, 3], "S": [3, 4], "W": [0, 1]}
+            # cube_borders
+            border_col_row_dict = { "N": [1, 0], 
+                                    "E": [4, 3], 
+                                    "S": [3, 4], 
+                                    "W": [0, 1]}
             for border in pieces:
                 if color in border:
                     from_pos = find_piece(border, color)
@@ -1318,6 +1338,7 @@ def solve_cube(cursor_pos, first_color='b'):
                     orientation = border_orientation(side_0, side_1, side)
                     col_row = border_col_row_dict[orientation].copy()
                     border_offset = int(border[2])
+                    
                     if orientation == "N":
                         col_row[0] = col_row[0] + border_offset
 
@@ -1331,6 +1352,7 @@ def solve_cube(cursor_pos, first_color='b'):
                         col_row[1] = col_row[1] - border_offset
 
                     to_pos = [side, col_row[0], col_row[1]]
+                    
                     if from_pos != to_pos:
                         piece_travels.append([border, from_pos, to_pos])
                         if debug or False:
@@ -1351,20 +1373,24 @@ def solve_cube(cursor_pos, first_color='b'):
             first_color (str): color first side
         """
         if debug or False:
-            print("solve_first_side_center")
+            print("solve_first_center")
 
         pos = find_piece(first_color)
+
         if pos != None and len(pos) == 3: 
             while first_side != pos[0]:
                 move(pos, relative_direction(pos[0], first_side))
                 display_unfolded_cube("cube")
                 pos = find_piece(first_color)
+        else:
+            raise Exception(f"solve_first_center({first_side}, {first_color}): Casen not hanlded. Check and fix.")
 
 
-    def solve_first_corners(first_side, first_color):
+    def solve_first_corners(first_side: int, first_color: str):
         """ solve corner pieces of the first side 
 
-            If misplaced corners exist place them to their target position starting with
+            If misplaced corners exist then place them to their target position 
+            starting with
         
             1. the corners not aligned and on the top row (reversed)
             2. the corners on the target side but on the wrong position
@@ -1383,6 +1409,7 @@ def solve_cube(cursor_pos, first_color='b'):
             print("solve_first_corners")
 
         misplaced_piece_travels = []
+
         # process until no more misplaced pieces are found
         misplaced_piece_travels = fill_piece_travels(first_color, cube_corners, first_side)
         while len(misplaced_piece_travels) > 0:
