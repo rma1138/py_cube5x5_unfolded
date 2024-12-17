@@ -1325,7 +1325,10 @@ def solve_cube(cursor_pos: list[int], first_color: str = "b"):
         return aligned
 
 
-    def is_piece_lateral_aligned(from_pos: list[int], to_pos: list[int]) -> bool:
+    def is_piece_lateral_aligned(piece: str,
+                                from_pos: list[int],
+                                to_pos: list[int], 
+                                side_color: str) -> bool:
         """ find if a piece is aligned below its target position on the relative bottom row.
 
         Args:
@@ -1335,19 +1338,13 @@ def solve_cube(cursor_pos: list[int], first_color: str = "b"):
         Returns:
             bool: is piece aligned?
         """        
-        aligned   = False
-        from_side = from_pos[0]
-        to_side   = to_pos[0]
-        translated_col_row = translate_col_row(from_side
-                                               ,to_side
-                                               ,from_pos[1]
-                                               ,from_pos[2])
-        if translated_col_row[0] == to_pos[1] and translated_col_row[1] == to_pos[2]:
-            aligned = True
+        to_adjacient_side = border_adjacient_sie(piece, to_pos, side_color)
+        if from_pos[0] == opposite_side[to_adjacient_side]:
+            return True
+        else:
+            return False
 
-        return aligned
-
-
+        
     def move_opposite_corner_to_bottom_row(piece: str, from_pos: list[int], to_side: int):
         """ move corner from the opposite side to the bottom row, in respect to the target side
 
@@ -1392,6 +1389,7 @@ def solve_cube(cursor_pos: list[int], first_color: str = "b"):
                 turn(from_adjacient_pos, 360 - turn_rotation)
                 display_unfolded_cube("cube")
                 break  # do not repeat fo the second adjacient side
+
 
     def move_reversed_border_to_bottom_row(piece: str, from_pos: list[int], to_side):
         """move reversed border piece from target side to the bottom row
@@ -1501,7 +1499,8 @@ def solve_cube(cursor_pos: list[int], first_color: str = "b"):
         display_unfolded_cube("cube")
 
         # move border left
-        move_direction = relative_direction(from_side, to_side)
+        move_direction = relative_direction(to_side, from_side)
+        move_direction = perpendicular_direction[move_direction]
         rotated_col_row = rotate_side([from_col, from_row], turn_rotation)
         move([from_side, rotated_col_row[0], rotated_col_row[1]], move_direction)
         display_unfolded_cube("cube")
@@ -1510,40 +1509,14 @@ def solve_cube(cursor_pos: list[int], first_color: str = "b"):
         turn(from_pos, 360 - turn_rotation)
         display_unfolded_cube("cube")
 
-    def move_lateral_aligned_border(from_pos, to_pos):
-        from_side = from_pos[0]
-        from_col = from_pos[1]
-        from_row = from_pos[2]
-        to_side = to_pos[0]
-
-        turn_rotation = 270
-        move_direction = "Left"
-        direction = relative_direction(from_side, to_side)
-        if (
-            direction == "Up"
-            and from_col == 0
-            or direction == "Left"
-            and from_row == 0
-            or direction == "Right"
-            and from_row == 4
-            or direction == "Down"
-            and from_col == 0
-        ):
-            turn_rotation = 90
-            move_direction = "Right"
-
-        # turn adjacient side forwards
-        turn(from_pos, turn_rotation)
+    def move_lateral_aligned_border(from_pos):
+        opposite = opposite_side[from_pos[0]]
+        rotate(opposite, 90)
         display_unfolded_cube("cube")
-
-        # move border to the left or right to place it
-        rotated_col_row = rotate_side([from_col, from_row], turn_rotation)
-        move([from_side, rotated_col_row[0], rotated_col_row[1]], move_direction)
+        move(from_pos, "Left")
         display_unfolded_cube("cube")
+        rotate(opposite, 270)
 
-        # turn adjacient side backwards
-        turn(from_pos, 360 - turn_rotation)
-        display_unfolded_cube("cube")
 
     def fill_piece_travels(color: str, pieces: list[str], side: int):
         # find misplaced piece from / to positions an keep them in piece_travels list
@@ -1786,14 +1759,12 @@ def solve_cube(cursor_pos: list[int], first_color: str = "b"):
                 from_row = from_pos[2]
                 to_pos = travel[2]
                 to_side = to_pos[0]
-                to_col = to_pos[1]
-                to_row = to_pos[2]
 
                 tr_to_col_row = translate_col_row(
                     from_side, to_side, from_col, from_row
                 )
                 tr_to_pos = [to_side, tr_to_col_row[0], tr_to_col_row[1]]
-                tr_from_col_row = translate_col_row(to_side, from_side, to_col, to_row)
+                tr_from_col_row = translate_col_row(to_side, from_side, from_col, from_row)
                 tr_from_pos = [from_side, tr_from_col_row[0], tr_from_col_row[1]]
 
                 # case 1 : check if border has to be moved down because already on the target side
@@ -1832,18 +1803,20 @@ def solve_cube(cursor_pos: list[int], first_color: str = "b"):
                             piece,
                             "is on the lateral column. Has to rotate until aligned.",
                         )
-                    if not is_piece_lateral_aligned(tr_from_pos, to_pos):
-                        direction = relative_direction(to_side, from_side)
+                    if not is_piece_lateral_aligned(piece, from_pos, to_pos, first_color):
+                        direction = relative_direction(from_side, to_side)
+                        direction = perpendicular_direction[direction]
                         move(from_pos, direction)
                         display_unfolded_cube("cube")
                         break
+
                     if debug or False:
                         print(
                             "    case 3: border",
                             piece,
                             "is aligned on the lateral column",
                         )
-                    move_lateral_aligned_border(from_pos, to_pos)
+                    move_lateral_aligned_border(from_pos)
                     display_unfolded_cube("cube")
                     break
 
@@ -1875,7 +1848,7 @@ def solve_cube(cursor_pos: list[int], first_color: str = "b"):
                         break  # skip and re-evaluate remaining misplaced pieace
                     if debug or False:
                         print("    case 5: border", piece, "is aligned")
-                    move_aligned_border(tr_from_pos, to_pos)
+                    move_aligned_border(from_pos, to_pos)
                     break  # skip and re-evaluate remaining misplaced pieace
 
             # process until no more misplaced pieces are found
@@ -2037,6 +2010,7 @@ opposite_side = {0: 1, 1: 0, 2: 3, 3: 2, 4: 5, 5: 4}
 
 # opposite move directions
 opposite_direction = {"Up": "Down", "Right": "Left", "Down": "Up", "Left": "Right"}
+perpendicular_direction = {"Up": "Right", "Right": "Down", "Down": "Left", "Left": "Up"}
 
 # Initialize graphic window
 height = 1090
