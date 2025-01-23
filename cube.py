@@ -300,6 +300,9 @@ class CubeHelper:
             return (col, row)
         
         if direction in ("Up", "Down"):
+            if to_side in (2, 3, 4, 5):
+                return (4 - col, 4 - row)
+            
             return (col, 4 - row)
         
         return (4 - col, row)
@@ -1878,15 +1881,17 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
         from_col = from_pos[1]
         from_row = from_pos[2]
         to_side = to_pos[0]
+        turns = 0
         while not is_piece_adjacient_aligned(
             piece, (from_side, from_col, from_row), to_pos
-        ):
+        ) and turns < 3:
             #
             # move middel sidewards (270° rotated relative to the target side direction)
             direction = helper.relative_direction(from_side, to_side)
             move_direction = helper.rotated_270_direction[direction]
             move(from_pos, move_direction)
             display_unfolded_cube("cube")
+            turns += 1
             #
             # take new from piece position
             from_side, from_col, from_row = find_piece(piece)
@@ -1917,6 +1922,11 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
                     rotation = 90
                 else:
                     rotation = 270
+            else:
+                if (from_col, from_row) in ((1, 1), (3, 3)):
+                    rotation = 270
+                else:
+                    rotation = 90
         turn(to_pos, rotation)
         display_unfolded_cube("cube")
             
@@ -1984,7 +1994,7 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
     # -----------------------------------------------------------------------------------------------------------
     #   solve functions
     # -----------------------------------------------------------------------------------------------------------
-    def solve_first_center(first_side: int, first_color: str):
+    def solve_first_centers(first_side: int, first_color: str):
         """solve center piece of the first side
 
         Args:
@@ -1992,7 +2002,7 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
             first_color (str): color first side
         """
         if debug or False:
-            print("solve_first_center")
+            print("solve_first_centers")
 
         pos = find_piece(first_color)
 
@@ -2003,7 +2013,7 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
                 pos = find_piece(first_color)
         else:
             raise Exception(
-                f"solve_first_center({first_side}, {first_color}): Casen not hanlded. Check and fix."
+                f"solve_first_centers({first_side}, {first_color}): Casen not hanlded. Check and fix."
             )
 
     def solve_first_corners(first_side: int, first_color: str):
@@ -2123,7 +2133,7 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
                 first_color, cube_corners, first_side
             )
 
-    def sovle_first_borders(first_side: int, first_color: str):
+    def solve_first_borders(first_side: int, first_color: str):
         """If misplaced borders exist place them to their target position starting with
 
             1. the ones on the target side but on the wrong position
@@ -2362,10 +2372,13 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
     #   solve cube main line
     # -----------------------------------------------------------------------------------------------------------
     first_side = cursor_pos[0] if isinstance(cursor_pos, list) else 0
-    solve_first_center(first_side, first_color)
+    solve_first_centers(first_side, first_color)
     solve_first_corners(first_side, first_color)
-    sovle_first_borders(first_side, first_color)
+    solve_first_borders(first_side, first_color)
     solve_first_middles(first_side, first_color)
+    solve_first_centers(first_side, first_color)    # TODO : repeated due to bug in first_middles
+    solve_first_borders(first_side, first_color)    # TODO : repeated due to bug in first_middles
+    solve_first_middles(first_side, first_color)    # TODO : repeated due to bug in first_middles
     # solve_row_1_borders(first_side, first_color)
     # solve_row_2_borders(first_side, first_color)
     # place_last_middle_borders(first_side, first_color)
