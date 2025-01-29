@@ -1356,9 +1356,23 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
             bool: is piece aligned?
         """
         from_side = from_pos[0]
+        from_col  = from_pos[1]
+        from_row  = from_pos[2]
         to_side = to_pos[0]
+        to_col  = to_pos[1]
+        to_row  = to_pos[2]
+
+        # if helper.is_side_adjacient(from_side, to_side): 
+        #     col, row  = helper.translate_col_row(from_side, to_side, from_col, from_row)
+        #     if (col, row) in (to_col, to_row):
+        #         return True
+        #     else:
+        #         return False
+        # else:
+        #     return True
+        
         if (
-            helper.relative_direction(from_side, to_side) in ("Up", "Down")
+            True # helper.relative_direction(from_side, to_side) in ("Up", "Down")
             and piece in cube_borders
         ):
             if from_side == border_adjacient_side(to_pos):
@@ -1367,9 +1381,9 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
                 return False
         else:
             col, row = helper.translate_col_row(
-                from_pos[0], to_pos[0], from_pos[1], from_pos[2]
+                from_side, to_side, from_col, from_row
             )
-            if col == to_pos[1] and row == to_pos[2]:
+            if col == to_col and row == to_row:
                 return True
             else:
                 return False
@@ -1889,7 +1903,7 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
             # move middel sidewards (270° rotated relative to the target side direction)
             direction = helper.relative_direction(from_side, to_side)
             move_direction = helper.rotated_270_direction[direction]
-            move(from_pos, move_direction)
+            move((from_side, from_col, from_row), move_direction)
             display_unfolded_cube("cube")
             turns += 1
             #
@@ -2376,9 +2390,6 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
     solve_first_corners(first_side, first_color)
     solve_first_borders(first_side, first_color)
     solve_first_middles(first_side, first_color)
-    solve_first_centers(first_side, first_color)    # TODO : repeated due to bug in first_middles
-    solve_first_borders(first_side, first_color)    # TODO : repeated due to bug in first_middles
-    solve_first_middles(first_side, first_color)    # TODO : repeated due to bug in first_middles
     # solve_row_1_borders(first_side, first_color)
     # solve_row_2_borders(first_side, first_color)
     # place_last_middle_borders(first_side, first_color)
