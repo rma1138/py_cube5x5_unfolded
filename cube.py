@@ -32,6 +32,10 @@ class CubeHelper:
     # (the 2nd side in any move cycle is allways the opposite side, direction does not matter)
     opposite_side = {0: 1, 1: 0, 2: 3, 3: 2, 4: 5, 5: 4}
 
+    # side color to opposite side dict
+    # (the 2nd side in any move cycle is allways the opposite side, direction does not matter)
+    opposite_color = { 'b' : 'y', 'r': 'o', 'g' : 'c', 'y' : 'b', 'o' : 'r', 'c' : 'g' }
+
     # opposite directions
     opposite_direction = {"Up": "Down", "Right": "Left", "Down": "Up", "Left": "Right"}
 
@@ -1388,6 +1392,22 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
             else:
                 return False
 
+    def is_border_lateral_aligned(from_pos: Position, to_pos: Position) -> bool:
+        """find if a border is aligned to be moved to the target position.
+
+        Args:
+            from_pos (list): source position as side, col and row index
+            to_pos (list): target position as side, cold and row index
+
+        Returns:
+            bool: is border aligned?
+        """
+        to_adjacient_side = border_adjacient_side(to_pos)
+        if from_pos[0] == helper.opposite_side[to_adjacient_side]:
+            return True
+        else:
+            return False
+
     def border_adjacient_side(border_pos: Position) -> int:
         """find the adjacient side of the target position.
             For border piece positions there is only 1 adjacient side
@@ -1439,22 +1459,6 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
                         ):
                             adjacient_sides.append(s)
         return adjacient_sides
-
-    def is_border_lateral_aligned(from_pos: Position, to_pos: Position) -> bool:
-        """find if a border is aligned to be moved to the target position.
-
-        Args:
-            from_pos (list): source position as side, col and row index
-            to_pos (list): target position as side, cold and row index
-
-        Returns:
-            bool: is border aligned?
-        """
-        to_adjacient_side = border_adjacient_side(to_pos)
-        if from_pos[0] == helper.opposite_side[to_adjacient_side]:
-            return True
-        else:
-            return False
 
     def fill_piece_travels(color: str, pieces: list[str], side: int) -> list[Travel]:
         """ind misplaced piece from / to positions an keep them in piece_travels list
@@ -1577,6 +1581,20 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
                                     f"travel middle {middle} from {from_pos} to {pos}"
                                 )
                         break
+        #
+        # Center pieces
+        # -------------
+        if pieces[0] in cube_centers:
+            # cube centers
+            for center in pieces:
+                from_pos = find_piece(center, color)
+                center_pos = (side, 2, 2)
+                if is_center_missplaced(center_pos, to_pos):
+                    piece_travels.append([middle, from_pos, pos])
+                    if debug or False:
+                        print(
+                            f"travel middle {middle} from {from_pos} to {pos}"
+                        )
         return piece_travels
 
     def move_reversed_corner_to_bottom_row(from_pos: Position, to_pos: Position):
@@ -2358,6 +2376,34 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
                 first_color, cube_middles, first_side
             )
 
+    def solve_lateral_centers(first_side: int, first_color: str):
+        """solve center pieces of the lateral sides. First side has to be solved first.
+
+        Args:
+            first_side (int): first side index
+            first_color (str): color first side
+        """
+        if debug or False:
+            print("solve_lateral_centers")
+        lateral_centers = [center for center in cube_centers
+                            if center not in (first_color, helper.opposite_color[first_color] ) ]
+        first_borders = [border for border in cube_borders if first_color in border]
+        misplaced_centers = True
+        while misplaced_centers:
+            for center in lateral_centers:
+                from_pos = find_piece(center)
+                from_side = from_pos[0]
+                for border in first_borders:
+                    if center in border:
+                        first_border_pos = find_piece(border, first_color)
+                        if from_side == border_adjacient_side(first_border_pos):
+                            misplaced_centers = False
+                            break
+                        direction = helper.rotated_270_direction[helper.relative_direction(from_side,first_side)]
+                        move(from_pos, direction)
+                        display_unfolded_cube("cube")
+                        break
+
     def solve_row_1_borders(first_side: int, first_color: str):
         pass
 
@@ -2390,14 +2436,15 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
     solve_first_corners(first_side, first_color)
     solve_first_borders(first_side, first_color)
     solve_first_middles(first_side, first_color)
-    # solve_row_1_borders(first_side, first_color)
-    # solve_row_2_borders(first_side, first_color)
-    # place_last_middle_borders(first_side, first_color)
-    # solve_last_corners(first_side, first_color)
-    # solve_last_lateral_borders(first_side, first_color)
-    # solve_last_middle_borders(first_side, first_color)
-    # solve_row_3_borders(first_side, first_color)
-    # solve_rest_middles(first_side, first_color)
+    solve_lateral_centers(first_side, first_color)
+    solve_row_1_borders(first_side, first_color)
+    solve_row_2_borders(first_side, first_color)
+    place_last_middle_borders(first_side, first_color)
+    solve_last_corners(first_side, first_color)
+    solve_last_lateral_borders(first_side, first_color)
+    solve_last_middle_borders(first_side, first_color)
+    solve_row_3_borders(first_side, first_color)
+    solve_rest_middles(first_side, first_color)
 
 
 # ------------------------------------------------------------------------------------------------------------------
@@ -2406,6 +2453,7 @@ def solve_cube(cursor_pos: list[int] | None, first_color: str = "b"):
 
 # write or not debug messages to the terminal and show piece identifiers on the cube
 debug = True
+#debug = False
 
 #  the main list modelling the 5 x 5 x 5 cube elements and their positions within the cube
 #
