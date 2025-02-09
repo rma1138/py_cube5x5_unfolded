@@ -2134,6 +2134,538 @@ class CubeSolver(CubeHelper):
             self.my_cube.turn(to_pos, 180)
         self.my_cube.display_unfolded_cube("cube")
 
+    def solve_first_centers(self, first_side: int, first_color: str):
+        """solve center piece of the first side
+
+        Args:
+            first_side (int): first side index
+            first_color (str): color first side
+        """
+        if debug or False:
+            print("solve_first_centers")
+
+        pos = self.find_piece(first_color)
+
+        if pos is not None and len(pos) == 3:
+            while first_side != pos[0]:
+                self.my_cube.move(pos, self.my_cube.relative_direction(pos[0], first_side))
+                self.my_cube.display_unfolded_cube("cube")
+                pos = self.find_piece(first_color)
+        else:
+            raise Exception(
+                f"solve_first_centers({first_side}, {first_color}): Casen not hanlded. Check and fix."
+            )
+
+    def solve_first_corners(self, first_side: int, first_color: str):
+        """solve corner pieces of the first side
+
+        If misplaced corners exist then place them to their target position
+        starting with
+
+        1. the corners not aligned and on the top row (reversed)
+        2. the corners on the target side but on the wrong position
+        3. the corners which have the target color on the opposite side
+        4. the corners placed on the bottom line (row or col depending on oritentation)
+            of the adjacient side (alligned)
+
+        After one piece has been moved to its correct target place,
+        skip the other and re-evaluate how many misplaced pieces are still there.
+
+        Args:
+        first_side (int): first side index
+        first_color (str): color first side
+        """
+        if debug or False:
+            print("solve_first_corners")
+
+        misplaced_piece_travels = []
+
+        # process until no more misplaced pieces are found
+        misplaced_piece_travels = self.fill_piece_travels(
+            first_color, self.my_cube.cube_corners, first_side
+        )
+        while len(misplaced_piece_travels) > 0:
+            for travel in misplaced_piece_travels:
+                travel_index = misplaced_piece_travels.index(travel) + 1
+                piece = travel[0]
+                from_pos = travel[1]
+                from_side = from_pos[0]
+                to_pos = travel[2]
+                to_side = to_pos[0]
+                #
+                # case 1: if corner on adjacient side but not aligned and on the top row
+                #          move it down, to be algined later
+                if self.is_piece_reversed(piece, to_side, first_color):
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(
+                            f"case 1: corner {piece} on adjecient side but on top row (reversed)"
+                        )
+
+                    self.move_reversed_corner_to_bottom_row(from_pos, to_pos)
+                    break
+                #
+                # case 2: if corner on the top side but on the wrong position
+                #          and all other corners are misplaced, then move it
+                #          to the correct position
+                if from_side == to_side and len(misplaced_piece_travels) == 4:
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(f"case 2a: corner {piece} have have to be rotated")
+
+                    self.move_target_side_corner(from_pos, to_pos)
+                    break
+                #
+                # case 2b: if corner on the top side but on the wrong position
+                #          and all other corners are misplaced, then turn it
+                if from_side == to_side and len(misplaced_piece_travels) < 4:
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(
+                            f"case 2b: corner {piece} have to be move down to the bottom row"
+                        )
+
+                    self.move_target_side_corner_to_bottom_row(from_pos, to_pos)
+                    break  # skip and re-evaluate remaining misplaced pieace
+                #
+                # case 3: check if corner is on the opposite side move it up to the bottom row
+                if from_side == self.my_cube.opposite_side[to_side]:
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(
+                            f"case 3: corner {piece} is on the opposite side. Has to be moved to the botton row"
+                        )
+
+                    self.move_opposite_corner_to_bottom_row(piece, from_pos, to_side, first_color)
+                    break  # skip and re-evaluate remaining misplaced pieace
+                #
+                # case 4: if corner on adjacient side but not reversed then
+                #          align it first than place it.
+                if self.my_cube.is_side_adjacient(
+                    from_side, to_side
+                ) and self.is_piece_on_bottom_row(piece, from_pos, to_side, first_color):
+                    if not self.is_piece_adjacient_aligned(piece, from_pos, to_pos):
+                        if travel_index < len(misplaced_piece_travels):
+                            continue
+
+                        if debug or False:
+                            print(f"case 4: corner {piece} is not aligned")
+
+                        self.align_bottom_row_corner(from_pos, to_pos)
+                        break  # skip and re-evaluate remaining misplaced pieace
+
+                    if debug or False:
+                        print(f"case 4: corner {piece} is aligned")
+
+                    self.move_aligned_corner(from_pos, to_pos)
+                    break  # skip and re-evaluate remaining misplaced pieace
+
+            # process until no more misplaced pieces are found
+            misplaced_piece_travels = self.fill_piece_travels(
+                first_color, self.my_cube.cube_corners, first_side
+            )
+
+    def solve_first_borders(self, first_side: int, first_color: str):
+        """If misplaced borders exist place them to their target position starting with
+
+            1. the ones on the target side but on the wrong position
+            -> move it down
+            2. the ones which are on the target side but with the wrong color (reversed)
+            -> move it to the bottem row (down, rotate bottom 180, up)
+            3. the ones on the lateral column
+            -> move it left, relative to the target side, if not lateral aligned
+            -> if lateral aligneed move piece to the target pos
+                (turn target adjacient side 270, move border right, turn adjacient side back 90)
+            4. the ones on the opposite side
+            -> move it to the bottom row
+            5. the ones placed on the relative bottom row (row or col depending on oritentation)
+            -> move it left, relative to the target side, if not bottom row aligned
+            -> if bottom row alligned move piece to the target pos
+                ()
+
+        After one piece has been moved to its correct target place,
+        skip the other and re-evaluate how many misplaced pieces are still there.
+
+        Do not skip other misplaced borders because they can be move in other target positions.
+
+        Args:
+            first_side (int): first side index
+            first_color (str): first side color
+        """
+        if debug or False:
+            print("solve_first_borders")
+
+        # process until no more misplaced pieces are found
+        misplaced_piece_travels = self.fill_piece_travels(
+            first_color, self.my_cube.cube_borders, first_side
+        )
+        while len(misplaced_piece_travels) > 0:
+            for travel in misplaced_piece_travels:
+                travel_index = misplaced_piece_travels.index(travel) + 1
+                piece = travel[0]
+                from_pos = travel[1]
+                from_side = from_pos[0]
+                to_pos = travel[2]
+                to_side = to_pos[0]
+                col, row = self.my_cube.translate_col_row(
+                    to_side, from_side, from_pos[1], from_pos[2]
+                )
+                #
+                # case 1 : check if border has to be moved down because already on the target side
+                #          but in the wrong positiion
+                if from_side == to_side:
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(
+                            f"case 1: border {piece} on target side has to be moved to the bottom row"
+                        )
+                    self.move_target_side_border_to_bottom_row(from_pos, to_pos)
+                    break  # skip and re-evaluate remaining misplaced pieace
+                #
+                # case 2 : check if border piece is on the target side but reversed and move it
+                #          down to the bottom row. Use same move as for alligned borders, just take
+                #          the piece aligned on the bottom row
+                if self.is_piece_reversed(piece, to_side, first_color):
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(
+                            f"case 2: border {piece} is reversed. Has to be moved down to the bottom row"
+                        )
+                    self.move_reversed_border_to_bottom_row(piece, from_pos, to_side)
+                    break  # skip and re-evaluate remaining misplaced pieace
+                #
+                # case 3 : check if border piece is on the lateral column.
+                #          rotate it if not lateral aligned to the target position
+                if (
+                    not self.is_piece_on_bottom_row(piece, from_pos, to_side, first_color)
+                    and not from_side == self.my_cube.opposite_side[to_side]
+                ):
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(
+                            f"case 3: border {piece} is on the lateral column. Has to rotate until aligned."
+                        )
+
+                    if not self.is_border_lateral_aligned(from_pos, to_pos):
+                        if travel_index < len(misplaced_piece_travels):
+                            continue
+
+                        self.align_lateral_border(from_pos, to_pos)
+                        break
+
+                    if debug or False:
+                        print(
+                            f"case 3: border {piece} is aligned on the lateral column"
+                        )
+                    self.move_aligned_border_lateral(from_pos, to_pos)
+                    break
+                #
+                # case 4 : check if border is on the opposite side move it up to the bottom row
+                if from_side == self.my_cube.opposite_side[to_side]:
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(
+                            f"case 4: border {piece} is on the opposite side. Has to be moved to the botton row"
+                        )
+                    self.move_opposite_border_to_bottom_row(piece, from_pos, to_side)
+                    break  # skip and re-evaluate remaining misplaced pieace
+                #
+                # case 5: if border on adjacient side but not reversed then
+                #         align it first than place it.
+                if self.my_cube.is_side_adjacient(
+                    from_side, to_side
+                ) and self.is_piece_on_bottom_row(piece, from_pos, to_side, first_color):
+                    if debug or False:
+                        print(
+                            f"case 5a: border {piece} in on the adjacient side and has to be aligned"
+                        )
+                    if not self.is_piece_adjacient_aligned(piece, from_pos, to_pos):
+                        if travel_index < len(misplaced_piece_travels):
+                            continue
+
+                        self.align_bottom_row_border(from_pos, to_pos)
+                        break  # skip and re-evaluate remaining misplaced pieace
+
+                    if debug or False:
+                        print(f"case 5b: border {piece} is aligned")
+                    self.move_aligned_border_bottom(from_pos, to_pos)
+                    break  # skip and re-evaluate remaining misplaced pieace
+
+            # process until no more misplaced pieces are found
+            misplaced_piece_travels = self.fill_piece_travels(
+                first_color, self.my_cube.cube_borders, first_side
+            )
+
+    def solve_first_middles(self, first_side: int, first_color: str):
+        """If misplaced middles exist place them to their target position starting with
+
+            1. the ones on the opposite side
+                -> rotate the opposite side until aligned to the target middle position
+            2. the ones on the adjacient side
+                -> rotate the target side in order to align the target position to the source middle
+            4. move the aligned middle to its target position
+
+        After each case move skip the other misplaced piece and re-evalute the pieces to place.
+
+        Args:
+            first_side (int): first side index
+            first_color (str): first side color
+        """
+        if debug or False:
+            print("solve_first_middles")
+
+        # process until no more misplaced pieces are found
+        misplaced_piece_travels = self.fill_piece_travels(
+            first_color, self.my_cube.cube_middles, first_side
+        )
+        while len(misplaced_piece_travels) > 0:
+            for travel in misplaced_piece_travels:
+                travel_index = misplaced_piece_travels.index(travel) + 1
+                piece = travel[0]
+                from_pos = travel[1]
+                from_side = from_pos[0]
+                to_pos = travel[2]
+                to_side = to_pos[0]
+                #
+                # case 1 : check if middle is on the opposite side and align it below the target pos
+                if from_side == self.my_cube.opposite_side[to_side]:
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(
+                            f"case 1: middle {piece} is on the opposite side. Has to be aligned below its target"
+                        )
+                    from_direction = self.align_opposite_middle(piece, from_pos, to_pos)
+                    new_from_pos = self.find_piece(piece)
+                    self.move_aligned_opposite_middle(
+                        piece, new_from_pos, to_pos, from_direction
+                    )
+                    break
+                #
+                # case 2 : check if middle is on the adjacient side and align it the target pos
+                if not self.is_piece_adjacient_aligned(piece, from_pos, to_pos):
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(
+                            f"case 2: middle {piece} is on the adjacient side. Has to be aligned below its target"
+                        )
+                    self.align_adjacient_middle(piece, from_pos, to_pos)
+                    break
+                #
+                # case 3 : move alinged middle to its target
+                if debug or False:
+                    print(
+                        f"case 3: middle {piece} is aligned (either opposite or adjacient side) and has to be moved to its target"
+                    )
+                self.move_aligned_middle(piece, from_pos, to_pos)
+                break
+
+            # process until no more misplaced pieces are found
+            misplaced_piece_travels = self.fill_piece_travels(
+                first_color, self.my_cube.cube_middles, first_side
+            )
+
+    def solve_lateral_centers(self, first_side: int, first_color: str):
+        """solve center pieces of the lateral sides. First side has to be solved first.
+
+        Args:
+            first_side (int): first side index
+            first_color (str): color first side
+        """
+        if debug or False:
+            print("solve_lateral_centers")
+        lateral_centers = [
+            center
+            for center in self.my_cube.cube_centers
+            if center not in (first_color, self.my_cube.opposite_color[first_color])
+        ]
+        first_borders = [border for border in self.my_cube.cube_borders if first_color in border]
+        misplaced_centers = True
+        while misplaced_centers:
+            for center in lateral_centers:
+                from_pos = self.find_piece(center)
+                from_side = from_pos[0]
+                for border in first_borders:
+                    if center in border:
+                        first_border_pos = self.find_piece(border, first_color)
+                        if from_side == self.border_adjacient_side(first_border_pos):
+                            misplaced_centers = False
+                            break
+                        direction = self.my_cube.rotated_270_direction[
+                            self.my_cube.relative_direction(from_side, first_side)
+                        ]
+                        self.my_cube.move(from_pos, direction)
+                        self.my_cube.display_unfolded_cube("cube")
+                        break
+
+    def solve_row_1_borders(self, first_side: int, first_color: str):
+        """If misplaced row 1 borders exist place them to their target position starting with
+
+            1. the ones on the lateral column
+            -> move it down to the bottom row, relative to the target side
+            2. the ones on the bottom row
+            -> align it under the target row 1 border 
+            3. move aligned piece to the target pos
+
+        After one piece has been moved to its correct target place,
+        skip the other and re-evaluate how many misplaced pieces are still there.
+
+        Args:
+            first_side (int): first side index
+            first_color (str): first side color
+        """
+        if debug or False:
+            print("solve_row_1_borders")
+
+        # process until no more misplaced pieces are found
+        misplaced_piece_travels = self.fill_piece_travels(
+            first_color, self.my_cube.cube_borders, first_side
+        )
+        while len(misplaced_piece_travels) > 0:
+            for travel in misplaced_piece_travels:
+                travel_index = misplaced_piece_travels.index(travel) + 1
+                piece = travel[0]
+                from_pos = travel[1]
+                from_side = from_pos[0]
+                to_pos = travel[2]
+                to_side = to_pos[0]
+                col, row = self.my_cube.translate_col_row(
+                    to_side, from_side, from_pos[1], from_pos[2]
+                )
+                #
+                # case 1 : check if border has to be moved down because already on the target side
+                #          but in the wrong positiion
+                if from_side == to_side:
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(
+                            f"case 1: border {piece} on target side has to be moved to the bottom row"
+                        )
+                    self.move_target_side_border_to_bottom_row(from_pos, to_pos)
+                    break  # skip and re-evaluate remaining misplaced pieace
+                #
+                # case 2 : check if border piece is on the target side but reversed and move it
+                #          down to the bottom row. Use same move as for alligned borders, just take
+                #          the piece aligned on the bottom row
+                if self.is_piece_reversed(piece, to_side, first_color):
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(
+                            f"case 2: border {piece} is reversed. Has to be moved down to the bottom row"
+                        )
+                    self.move_reversed_border_to_bottom_row(piece, from_pos, to_side)
+                    break  # skip and re-evaluate remaining misplaced pieace
+                #
+                # case 3 : check if border piece is on the lateral column.
+                #          rotate it if not lateral aligned to the target position
+                if (
+                    not self.is_piece_on_bottom_row(piece, from_pos, to_side, first_color)
+                    and not from_side == self.my_cube.opposite_side[to_side]
+                ):
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(
+                            f"case 3: border {piece} is on the lateral column. Has to rotate until aligned."
+                        )
+
+                    if not self.is_border_lateral_aligned(from_pos, to_pos):
+                        if travel_index < len(misplaced_piece_travels):
+                            continue
+
+                        self.align_lateral_border(from_pos, to_pos)
+                        break
+
+                    if debug or False:
+                        print(
+                            f"case 3: border {piece} is aligned on the lateral column"
+                        )
+                    self.move_aligned_border_lateral(from_pos, to_pos)
+                    break
+                #
+                # case 4 : check if border is on the opposite side move it up to the bottom row
+                if from_side == self.my_cube.opposite_side[to_side]:
+                    if travel_index < len(misplaced_piece_travels):
+                        continue
+
+                    if debug or False:
+                        print(
+                            f"case 4: border {piece} is on the opposite side. Has to be moved to the botton row"
+                        )
+                    self.move_opposite_border_to_bottom_row(piece, from_pos, to_side)
+                    break  # skip and re-evaluate remaining misplaced pieace
+                #
+                # case 5: if border on adjacient side but not reversed then
+                #         align it first than place it.
+                if self.my_cube.is_side_adjacient(
+                    from_side, to_side
+                ) and self.is_piece_on_bottom_row(piece, from_pos, to_side, first_color):
+                    if debug or False:
+                        print(
+                            f"case 5a: border {piece} in on the adjacient side and has to be aligned"
+                        )
+                    if not self.is_piece_adjacient_aligned(piece, from_pos, to_pos):
+                        if travel_index < len(misplaced_piece_travels):
+                            continue
+
+                        self.align_bottom_row_border(from_pos, to_pos)
+                        break  # skip and re-evaluate remaining misplaced pieace
+
+                    if debug or False:
+                        print(f"case 5b: border {piece} is aligned")
+                    self.move_aligned_border_bottom(from_pos, to_pos)
+                    break  # skip and re-evaluate remaining misplaced pieace
+
+            # process until no more misplaced pieces are found
+            misplaced_piece_travels = self.fill_piece_travels(
+                first_color, self.my_cube.cube_borders, first_side
+            )
+
+    def solve_row_2_borders(self, first_side: int, first_color: str):
+        pass
+
+    def place_last_middle_borders(self, first_side: int, first_color: str):
+        pass
+
+    def solve_last_corners(self, fist_side: int, first_color: str):
+        pass
+
+    def solve_last_lateral_borders(self, first_side: int, first_color: str):
+        pass
+
+    def solve_last_middle_borders(self, fisrt_side: int, first_color: str):
+        pass
+
+    def solve_row_3_borders(self, first_side: int, first_color: str):
+        pass
+
+    def solve_rest_middles(self, first_side: int, first_color: str):
+        pass
+
     def solve(self, cursor_pos: list[int] | None, first_color: str = "b"):
         """Solve the cube using the "human" method
 
@@ -2141,431 +2673,20 @@ class CubeSolver(CubeHelper):
             cursor_pos (list): cursor postion as side, col and row index
             first_color (str, optional): start side color. Defaults to 'b'.
         """
-        def solve_first_centers(first_side: int, first_color: str):
-            """solve center piece of the first side
-
-            Args:
-                first_side (int): first side index
-                first_color (str): color first side
-            """
-            if debug or False:
-                print("solve_first_centers")
-
-            pos = self.find_piece(first_color)
-
-            if pos is not None and len(pos) == 3:
-                while first_side != pos[0]:
-                    self.my_cube.move(pos, self.my_cube.relative_direction(pos[0], first_side))
-                    self.my_cube.display_unfolded_cube("cube")
-                    pos = self.find_piece(first_color)
-            else:
-                raise Exception(
-                    f"solve_first_centers({first_side}, {first_color}): Casen not hanlded. Check and fix."
-                )
-
-        def solve_first_corners(first_side: int, first_color: str):
-            """solve corner pieces of the first side
-
-            If misplaced corners exist then place them to their target position
-            starting with
-
-            1. the corners not aligned and on the top row (reversed)
-            2. the corners on the target side but on the wrong position
-            3. the corners which have the target color on the opposite side
-            4. the corners placed on the bottom line (row or col depending on oritentation)
-                of the adjacient side (alligned)
-
-            After one piece has been moved to its correct target place,
-            skip the other and re-evaluate how many misplaced pieces are still there.
-
-            Args:
-            first_side (int): first side index
-            first_color (str): color first side
-            """
-            if debug or False:
-                print("solve_first_corners")
-
-            misplaced_piece_travels = []
-
-            # process until no more misplaced pieces are found
-            misplaced_piece_travels = self.fill_piece_travels(
-                first_color, self.my_cube.cube_corners, first_side
-            )
-            while len(misplaced_piece_travels) > 0:
-                for travel in misplaced_piece_travels:
-                    travel_index = misplaced_piece_travels.index(travel) + 1
-                    piece = travel[0]
-                    from_pos = travel[1]
-                    from_side = from_pos[0]
-                    to_pos = travel[2]
-                    to_side = to_pos[0]
-                    #
-                    # case 1: if corner on adjacient side but not aligned and on the top row
-                    #          move it down, to be algined later
-                    if self.is_piece_reversed(piece, to_side, first_color):
-                        if travel_index < len(misplaced_piece_travels):
-                            continue
-
-                        if debug or False:
-                            print(
-                                f"case 1: corner {piece} on adjecient side but on top row (reversed)"
-                            )
-
-                        self.move_reversed_corner_to_bottom_row(from_pos, to_pos)
-                        break
-                    #
-                    # case 2: if corner on the top side but on the wrong position
-                    #          and all other corners are misplaced, then move it
-                    #          to the correct position
-                    if from_side == to_side and len(misplaced_piece_travels) == 4:
-                        if travel_index < len(misplaced_piece_travels):
-                            continue
-
-                        if debug or False:
-                            print(f"case 2a: corner {piece} have have to be rotated")
-
-                        self.move_target_side_corner(from_pos, to_pos)
-                        break
-                    #
-                    # case 2b: if corner on the top side but on the wrong position
-                    #          and all other corners are misplaced, then turn it
-                    if from_side == to_side and len(misplaced_piece_travels) < 4:
-                        if travel_index < len(misplaced_piece_travels):
-                            continue
-
-                        if debug or False:
-                            print(
-                                f"case 2b: corner {piece} have to be move down to the bottom row"
-                            )
-
-                        self.move_target_side_corner_to_bottom_row(from_pos, to_pos)
-                        break  # skip and re-evaluate remaining misplaced pieace
-                    #
-                    # case 3: check if corner is on the opposite side move it up to the bottom row
-                    if from_side == self.my_cube.opposite_side[to_side]:
-                        if travel_index < len(misplaced_piece_travels):
-                            continue
-
-                        if debug or False:
-                            print(
-                                f"case 3: corner {piece} is on the opposite side. Has to be moved to the botton row"
-                            )
-
-                        self.move_opposite_corner_to_bottom_row(piece, from_pos, to_side, first_color)
-                        break  # skip and re-evaluate remaining misplaced pieace
-                    #
-                    # case 4: if corner on adjacient side but not reversed then
-                    #          align it first than place it.
-                    if self.my_cube.is_side_adjacient(
-                        from_side, to_side
-                    ) and self.is_piece_on_bottom_row(piece, from_pos, to_side, first_color):
-                        if not self.is_piece_adjacient_aligned(piece, from_pos, to_pos):
-                            if travel_index < len(misplaced_piece_travels):
-                                continue
-
-                            if debug or False:
-                                print(f"case 4: corner {piece} is not aligned")
-
-                            self.align_bottom_row_corner(from_pos, to_pos)
-                            break  # skip and re-evaluate remaining misplaced pieace
-
-                        if debug or False:
-                            print(f"case 4: corner {piece} is aligned")
-
-                        self.move_aligned_corner(from_pos, to_pos)
-                        break  # skip and re-evaluate remaining misplaced pieace
-
-                # process until no more misplaced pieces are found
-                misplaced_piece_travels = self.fill_piece_travels(
-                    first_color, self.my_cube.cube_corners, first_side
-                )
-
-        def solve_first_borders(first_side: int, first_color: str):
-            """If misplaced borders exist place them to their target position starting with
-
-                1. the ones on the target side but on the wrong position
-                -> move it down
-                2. the ones which are on the target side but with the wrong color (reversed)
-                -> move it to the bottem row (down, rotate bottom 180, up)
-                3. the ones on the lateral column
-                -> move it left, relative to the target side, if not lateral aligned
-                -> if lateral aligneed move piece to the target pos
-                    (turn target adjacient side 270, move border right, turn adjacient side back 90)
-                4. the ones on the opposite side
-                -> move it to the bottom row
-                5. the ones placed on the relative bottom row (row or col depending on oritentation)
-                -> move it left, relative to the target side, if not bottom row aligned
-                -> if bottom row alligned move piece to the target pos
-                    ()
-
-            After one piece has been moved to its correct target place,
-            skip the other and re-evaluate how many misplaced pieces are still there.
-
-            Do not skip other misplaced borders because they can be move in other target positions.
-
-            Args:
-                first_side (int): first side index
-                first_color (str): first side color
-            """
-            if debug or False:
-                print("solve_first_borders")
-
-            # process until no more misplaced pieces are found
-            misplaced_piece_travels = self.fill_piece_travels(
-                first_color, self.my_cube.cube_borders, first_side
-            )
-            while len(misplaced_piece_travels) > 0:
-                for travel in misplaced_piece_travels:
-                    travel_index = misplaced_piece_travels.index(travel) + 1
-                    piece = travel[0]
-                    from_pos = travel[1]
-                    from_side = from_pos[0]
-                    to_pos = travel[2]
-                    to_side = to_pos[0]
-                    col, row = self.my_cube.translate_col_row(
-                        to_side, from_side, from_pos[1], from_pos[2]
-                    )
-                    #
-                    # case 1 : check if border has to be moved down because already on the target side
-                    #          but in the wrong positiion
-                    if from_side == to_side:
-                        if travel_index < len(misplaced_piece_travels):
-                            continue
-
-                        if debug or False:
-                            print(
-                                f"case 1: border {piece} on target side has to be moved to the bottom row"
-                            )
-                        self.move_target_side_border_to_bottom_row(from_pos, to_pos)
-                        break  # skip and re-evaluate remaining misplaced pieace
-                    #
-                    # case 2 : check if border piece is on the target side but reversed and move it
-                    #          down to the bottom row. Use same move as for alligned borders, just take
-                    #          the piece aligned on the bottom row
-                    if self.is_piece_reversed(piece, to_side, first_color):
-                        if travel_index < len(misplaced_piece_travels):
-                            continue
-
-                        if debug or False:
-                            print(
-                                f"case 2: border {piece} is reversed. Has to be moved down to the bottom row"
-                            )
-                        self.move_reversed_border_to_bottom_row(piece, from_pos, to_side)
-                        break  # skip and re-evaluate remaining misplaced pieace
-                    #
-                    # case 3 : check if border piece is on the lateral column.
-                    #          rotate it if not lateral aligned to the target position
-                    if (
-                        not self.is_piece_on_bottom_row(piece, from_pos, to_side, first_color)
-                        and not from_side == self.my_cube.opposite_side[to_side]
-                    ):
-                        if travel_index < len(misplaced_piece_travels):
-                            continue
-
-                        if debug or False:
-                            print(
-                                f"case 3: border {piece} is on the lateral column. Has to rotate until aligned."
-                            )
-
-                        if not self.is_border_lateral_aligned(from_pos, to_pos):
-                            if travel_index < len(misplaced_piece_travels):
-                                continue
-
-                            self.align_lateral_border(from_pos, to_pos)
-                            break
-
-                        if debug or False:
-                            print(
-                                f"case 3: border {piece} is aligned on the lateral column"
-                            )
-                        self.move_aligned_border_lateral(from_pos, to_pos)
-                        break
-                    #
-                    # case 4 : check if border is on the opposite side move it up to the bottom row
-                    if from_side == self.my_cube.opposite_side[to_side]:
-                        if travel_index < len(misplaced_piece_travels):
-                            continue
-
-                        if debug or False:
-                            print(
-                                f"case 4: border {piece} is on the opposite side. Has to be moved to the botton row"
-                            )
-                        self.move_opposite_border_to_bottom_row(piece, from_pos, to_side)
-                        break  # skip and re-evaluate remaining misplaced pieace
-                    #
-                    # case 5: if border on adjacient side but not reversed then
-                    #         align it first than place it.
-                    if self.my_cube.is_side_adjacient(
-                        from_side, to_side
-                    ) and self.is_piece_on_bottom_row(piece, from_pos, to_side, first_color):
-                        if debug or False:
-                            print(
-                                f"case 5a: border {piece} in on the adjacient side and has to be aligned"
-                            )
-                        if not self.is_piece_adjacient_aligned(piece, from_pos, to_pos):
-                            if travel_index < len(misplaced_piece_travels):
-                                continue
-
-                            self.align_bottom_row_border(from_pos, to_pos)
-                            break  # skip and re-evaluate remaining misplaced pieace
-
-                        if debug or False:
-                            print(f"case 5b: border {piece} is aligned")
-                        self.move_aligned_border_bottom(from_pos, to_pos)
-                        break  # skip and re-evaluate remaining misplaced pieace
-
-                # process until no more misplaced pieces are found
-                misplaced_piece_travels = self.fill_piece_travels(
-                    first_color, self.my_cube.cube_borders, first_side
-                )
-
-        def solve_first_middles(first_side: int, first_color: str):
-            """If misplaced middles exist place them to their target position starting with
-
-                1. the ones on the opposite side
-                    -> rotate the opposite side until aligned to the target middle position
-                2. the ones on the adjacient side
-                    -> rotate the target side in order to align the target position to the source middle
-                4. move the aligned middle to its target position
-
-            After each case move skip the other misplaced piece and re-evalute the pieces to place.
-
-            Args:
-                first_side (int): first side index
-                first_color (str): first side color
-            """
-            if debug or False:
-                print("solve_first_middles")
-
-            # process until no more misplaced pieces are found
-            misplaced_piece_travels = self.fill_piece_travels(
-                first_color, self.my_cube.cube_middles, first_side
-            )
-            while len(misplaced_piece_travels) > 0:
-                for travel in misplaced_piece_travels:
-                    travel_index = misplaced_piece_travels.index(travel) + 1
-                    piece = travel[0]
-                    from_pos = travel[1]
-                    from_side = from_pos[0]
-                    to_pos = travel[2]
-                    to_side = to_pos[0]
-                    #
-                    # case 1 : check if middle is on the opposite side and align it below the target pos
-                    if from_side == self.my_cube.opposite_side[to_side]:
-                        if travel_index < len(misplaced_piece_travels):
-                            continue
-
-                        if debug or False:
-                            print(
-                                f"case 1: middle {piece} is on the opposite side. Has to be aligned below its target"
-                            )
-                        from_direction = self.align_opposite_middle(piece, from_pos, to_pos)
-                        new_from_pos = self.find_piece(piece)
-                        self.move_aligned_opposite_middle(
-                            piece, new_from_pos, to_pos, from_direction
-                        )
-                        break
-                    #
-                    # case 2 : check if middle is on the adjacient side and align it the target pos
-                    if not self.is_piece_adjacient_aligned(piece, from_pos, to_pos):
-                        if travel_index < len(misplaced_piece_travels):
-                            continue
-
-                        if debug or False:
-                            print(
-                                f"case 2: middle {piece} is on the adjacient side. Has to be aligned below its target"
-                            )
-                        self.align_adjacient_middle(piece, from_pos, to_pos)
-                        break
-                    #
-                    # case 3 : move alinged middle to its target
-                    if debug or False:
-                        print(
-                            f"case 3: middle {piece} is aligned (either opposite or adjacient side) and has to be moved to its target"
-                        )
-                    self.move_aligned_middle(piece, from_pos, to_pos)
-                    break
-
-                # process until no more misplaced pieces are found
-                misplaced_piece_travels = self.fill_piece_travels(
-                    first_color, self.my_cube.cube_middles, first_side
-                )
-
-        def solve_lateral_centers(first_side: int, first_color: str):
-            """solve center pieces of the lateral sides. First side has to be solved first.
-
-            Args:
-                first_side (int): first side index
-                first_color (str): color first side
-            """
-            if debug or False:
-                print("solve_lateral_centers")
-            lateral_centers = [
-                center
-                for center in self.my_cube.cube_centers
-                if center not in (first_color, self.my_cube.opposite_color[first_color])
-            ]
-            first_borders = [border for border in self.my_cube.cube_borders if first_color in border]
-            misplaced_centers = True
-            while misplaced_centers:
-                for center in lateral_centers:
-                    from_pos = self.find_piece(center)
-                    from_side = from_pos[0]
-                    for border in first_borders:
-                        if center in border:
-                            first_border_pos = self.find_piece(border, first_color)
-                            if from_side == self.border_adjacient_side(first_border_pos):
-                                misplaced_centers = False
-                                break
-                            direction = self.my_cube.rotated_270_direction[
-                                self.my_cube.relative_direction(from_side, first_side)
-                            ]
-                            self.my_cube.move(from_pos, direction)
-                            self.my_cube.display_unfolded_cube("cube")
-                            break
-
-        def solve_row_1_borders(first_side: int, first_color: str):
-            pass
-
-        def solve_row_2_borders(first_side: int, first_color: str):
-            pass
-
-        def place_last_middle_borders(first_side: int, first_color: str):
-            pass
-
-        def solve_last_corners(fist_side: int, first_color: str):
-            pass
-
-        def solve_last_lateral_borders(first_side: int, first_color: str):
-            pass
-
-        def solve_last_middle_borders(fisrt_side: int, first_color: str):
-            pass
-
-        def solve_row_3_borders(first_side: int, first_color: str):
-            pass
-
-        def solve_rest_middles(first_side: int, first_color: str):
-            pass
-
-        # -----------------------------------------------------------------------------------------------------------
-        #   solve cube main line
-        # -----------------------------------------------------------------------------------------------------------
         first_side = cursor_pos[0] if isinstance(cursor_pos, list) else 0
-        solve_first_centers(first_side, first_color)
-        solve_first_corners(first_side, first_color)
-        solve_first_borders(first_side, first_color)
-        solve_first_middles(first_side, first_color)
-        solve_lateral_centers(first_side, first_color)
-        solve_row_1_borders(first_side, first_color)
-        solve_row_2_borders(first_side, first_color)
-        place_last_middle_borders(first_side, first_color)
-        solve_last_corners(first_side, first_color)
-        solve_last_lateral_borders(first_side, first_color)
-        solve_last_middle_borders(first_side, first_color)
-        solve_row_3_borders(first_side, first_color)
-        solve_rest_middles(first_side, first_color)
-
+        self.solve_first_centers(first_side, first_color)
+        self.solve_first_corners(first_side, first_color)
+        self.solve_first_borders(first_side, first_color)
+        self.solve_first_middles(first_side, first_color)
+        self.solve_lateral_centers(first_side, first_color)
+        self.solve_row_1_borders(first_side, first_color)
+        self.solve_row_2_borders(first_side, first_color)
+        self.place_last_middle_borders(first_side, first_color)
+        self.solve_last_corners(first_side, first_color)
+        self.solve_last_lateral_borders(first_side, first_color)
+        self.solve_last_middle_borders(first_side, first_color)
+        self.solve_row_3_borders(first_side, first_color)
+        self.solve_rest_middles(first_side, first_color)
 
 # ------------------------------------------------------------------------------------------------------------------
 #   Gobal variables and initializations
