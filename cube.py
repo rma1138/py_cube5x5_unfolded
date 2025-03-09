@@ -1,11 +1,12 @@
 from graphics import GraphWin, color_rgb, Rectangle, Point, Text
 from random import randint
+import time
 
 # Custom types used for type hints (static type checking)
+# -------------------------------------------------------
 type ColRow = tuple[int, int]
 type Position = tuple[int, int, int]
 type Travel = tuple[str, Position, Position]
-
 
 # Helper class for cube constants and class functions
 # ---------------------------------------------------
@@ -518,13 +519,12 @@ class CubeHelper:
                 )
             return to_from_side_dict[to_side][from_side]
 
-
 #
 # Cube class
 # ----------
 class Cube(CubeHelper):
 
-    def __init__(self):
+    def __init__(self, cursor_pos: Position = (0, 2, 2)):
         """Initialie cube with the default (solved) pieces
 
         Returns:
@@ -768,13 +768,15 @@ class Cube(CubeHelper):
         # moves history
         self.moves = []
 
+        # current cursor position 
+        self.cursor_pos = [cursor_pos[0], cursor_pos[1], cursor_pos[2]]
+
     def __del__(self):
         self.win.close()
 
     def display_unfolded_cube(
         self,
         scope: str = "cube",
-        cursor_pos: list[int] | None = None,
         side_selected: bool = False,
         side_sequence: list[int] = [0, 3, 4, 2, 5, 1],
     ):
@@ -782,7 +784,6 @@ class Cube(CubeHelper):
 
         Args:
             scope (str, optional)           : Display cube only or cursor or all. Defaults to "cube".
-            cursor_pos (list, optional)     : cursor position as list of side, col and row index. Defaults to None.
             side_sequence (list, optional)  : list of sides to be display. Defaults to [0, 3, 4, 2, 5, 1].
 
         Returns:
@@ -909,8 +910,8 @@ class Cube(CubeHelper):
 
         if scope in ("cursor", "all"):
             side_index = 0
-            if cursor_pos is not None:
-                side_index = cursor_pos[0]
+            if self.cursor_pos is not None:
+                side_index = self.cursor_pos[0]
 
             if side_selected:
                 # if cursor_obj[0] is not None:
@@ -936,9 +937,9 @@ class Cube(CubeHelper):
 
             else:
                 col_index, row_index = 2, 2
-                if cursor_pos is not None:
-                    col_index = cursor_pos[1]
-                    row_index = cursor_pos[2]
+                if self.cursor_pos is not None:
+                    col_index = self.cursor_pos[1]
+                    row_index = self.cursor_pos[2]
 
                 x, y = get_x_y(side_index, col_index, row_index)
                 self.cursor_obj[0] = Rectangle(
@@ -988,7 +989,7 @@ class Cube(CubeHelper):
 
                 cursor_pos_obj = Text(
                     Point(self.win.width - 120, self.win.height - self.win_bottom_status_height),
-                    "cursor : " + str(cursor_pos),
+                    "cursor : " + str(self.cursor_pos),
                 )
                 cursor_pos_obj.setTextColor(color_rgb(255, 255, 255))
                 cursor_pos_obj.draw(self.win)
@@ -997,14 +998,14 @@ class Cube(CubeHelper):
                     self.cursor_pos_piece_obj.undraw()
 
                 self.cursor_pos_piece_obj = None
-                if cursor_pos is not None:
+                if self.cursor_pos is not None:
                     self.cursor_pos_piece_obj = Text(
                         Point(
                             self.win.width - 130, self.win.height - self.win_bottom_status_height + 20
                         ),
                         "piece : "
                         + str(
-                            self.cube[cursor_pos[0]][cursor_pos[1]][cursor_pos[2]][1]
+                            self.cube[self.cursor_pos[0]][self.cursor_pos[1]][self.cursor_pos[2]][1]
                         ).ljust(5, " "),
                     )
                     self.cursor_pos_piece_obj.setTextColor(color_rgb(255, 255, 255))
@@ -1350,7 +1351,7 @@ class Cube(CubeHelper):
             self.move((side, col, row), dir)
             self.display_unfolded_cube("cube")
 
-        self.display_unfolded_cube("cursor", cursor_pos)
+        self.display_unfolded_cube("cursor")
 
     def reverse_moves(self):
         self.move_history = [
@@ -1362,7 +1363,7 @@ class Cube(CubeHelper):
             self.display_unfolded_cube("cube")
 
         self.moves.clear()
-        self.display_unfolded_cube("cursor", cursor_pos)
+        self.display_unfolded_cube("cursor")
 
 class CubeSolver(CubeHelper):
 
@@ -2666,14 +2667,13 @@ class CubeSolver(CubeHelper):
     def solve_rest_middles(self, first_side: int, first_color: str):
         pass
 
-    def solve(self, cursor_pos: list[int] | None, first_color: str = "b"):
+    def solve(self, first_color: str = "b"):
         """Solve the cube using the "human" method
 
         Args:
-            cursor_pos (list): cursor postion as side, col and row index
             first_color (str, optional): start side color. Defaults to 'b'.
         """
-        first_side = cursor_pos[0] if isinstance(cursor_pos, list) else 0
+        first_side = self.my_cube.cursor_pos[0] if isinstance(self.my_cube.cursor_pos, list) else 0
         self.solve_first_centers(first_side, first_color)
         self.solve_first_corners(first_side, first_color)
         self.solve_first_borders(first_side, first_color)
@@ -2688,101 +2688,105 @@ class CubeSolver(CubeHelper):
         self.solve_row_3_borders(first_side, first_color)
         self.solve_rest_middles(first_side, first_color)
 
-# ------------------------------------------------------------------------------------------------------------------
-#   Gobal variables and initializations
-# ------------------------------------------------------------------------------------------------------------------
+class CubeGame():
+    # keys used for the game
+    navigate_keys = ("Up", "Down", "Left", "Right")
+    move_keys = ("w", "a", "s", "d")
+    turn_keys = ("Shift_L", "Shift_R")
+    shuffle_key = "space"
+    new_key = "n"
+    reverse_key = "r"
+    solve_key = "Return"
+    side_selection_keys = ("Control_L", "Control_R")
+    key_to_direction = {
+        "w": "Up",
+        "a": "Left",
+        "s": "Down",
+        "d": "Right",
+        "Shift_L": 270,
+        "Shift_R": 90,
+    }
+
+    def __init__(self):
+        # init cube with default position
+        self.cursor_pos = [0, 2, 2]
+        self.cube = Cube((self.cursor_pos[0], self.cursor_pos[1], self.cursor_pos[2]))
+
+        # display cube
+        self.cube.display_keys_usage()
+        self.cube.display_unfolded_cube("all")
+        self.side_selected = False
+
+        # wait 0.5 seconds to make the first win.getKey() working in play()
+        time.sleep(0.5)
+
+    def __del__(self):
+        del self.cube
+
+    def play(self):
+        key = self.cube.win.getKey().replace("KP_", "")
+        while key != "Escape":
+            print(key)
+            # do something only if a relevant key has been pressed
+            if key in self.navigate_keys + self.move_keys + self.turn_keys + self.side_selection_keys or key in (
+                self.shuffle_key,
+                self.reverse_key,
+                self.new_key,
+                self.solve_key,
+            ):
+                if key in self.navigate_keys:  # Up, Down, Left, Right
+                    self.cursor_pos = self.cube.navigate_unfolded(self.cube.cursor_pos, key, self.side_selected)
+                    self.cube.cursor_pos = self.cursor_pos
+                    self.cube.display_unfolded_cube("cursor", self.side_selected)
+
+                elif key in self.move_keys:  # w, a, s, d
+                    self.cursor_pos = self.cube.move_from_cursor(
+                        self.cursor_pos, self.key_to_direction[key], self.side_selected
+                    )
+                    self.side_selected = False
+                    self.cube.display_unfolded_cube("all")
+
+                elif key == self.shuffle_key:  # space
+                    self.cube.shuffle_cube()
+                    self.cube.display_unfolded_cube("cursor")
+
+                elif key == self.new_key:  # new
+                    del self.cube
+                    self.cube = Cube()
+                    self.cube.display_unfolded_cube("all")
+                    self.cube.display_keys_usage()
+
+                elif key == self.reverse_key:  # r
+                    self.cube.reverse_moves()
+
+                elif key in self.turn_keys:  # Shift_L, Shift_R
+                    self.cube.turn(self.cursor_pos, self.key_to_direction[key])
+                    self.cube.display_unfolded_cube("all")
+
+                elif key == self.solve_key:  # Return
+                    solver = CubeSolver(self.cube)
+                    # center = self.cube.cube[self.cursor_pos[0]][2][2][1]  TODO: first_color logic not yet implemented
+                    center = "b"
+                    solver.solve(center)    
+                    self.cube.display_unfolded_cube("cursor", self.cursor_pos)
+
+                elif key in self.side_selection_keys:  # Control_L, Control_R
+                    if not self.side_selected:
+                        self.side_selected = True
+                    else:
+                        self.side_selected = False
+
+                    self.cube.display_unfolded_cube("cursor", self.side_selected)
+
+            key = self.cube.win.getKey().replace("KP_", "")
+
+# ----------------------------------------------------------------------------------------------------------------------------------------
+# Main 
+# ----------------------------------------------------------------------------------------------------------------------------------------
 
 # write or not debug messages to the terminal and show piece identifiers on the cube
 debug = True
 # debug = False
 
-# init cube with default position
-cube = Cube()
-
-rectangle_obj = Rectangle(Point(0, 0), Point(1, 1))
-text_obj = Text(Point(0, 0), "")
-
-# set cursor on the home postion
-cursor_pos = [0, 2, 2]
-
-# display cube and keys used for the game
-interval_sec = 0
-cube.display_keys_usage()
-cube.display_unfolded_cube("all", cursor_pos)
-interval_sec = 1
-
-navigate_keys = ("Up", "Down", "Left", "Right")
-move_keys = ("w", "a", "s", "d")
-turn_keys = ("Shift_L", "Shift_R")
-shuffle_key = "space"
-new_key = "n"
-reverse_key = "r"
-solve_key = "Return"
-side_selection_keys = ("Control_L", "Control_R")
-key_to_direction = {
-    "w": "Up",
-    "a": "Left",
-    "s": "Down",
-    "d": "Right",
-    "Shift_L": 270,
-    "Shift_R": 90,
-}
-side_selected = False
-
-# ----------------------------------------------------------------------------------------------------------------
-#   Main loop
-# ----------------------------------------------------------------------------------------------------------------
-key = cube.win.getKey().replace("KP_", "")
-while key != "Escape":
-    # do something only if a relevant key has been pressed
-    if key in navigate_keys + move_keys + turn_keys + side_selection_keys or key in (
-        shuffle_key,
-        reverse_key,
-        new_key,
-        solve_key,
-    ):
-        if key in navigate_keys:  # Up, Down, Left, Right
-            cursor_pos = cube.navigate_unfolded(cursor_pos, key, side_selected)
-            cube.display_unfolded_cube("cursor", cursor_pos, side_selected)
-
-        elif key in move_keys:  # w, a, s, d
-            cursor_pos = cube.move_from_cursor(
-                cursor_pos, key_to_direction[key], side_selected
-            )
-            side_selected = False
-            cube.display_unfolded_cube("all", cursor_pos)
-
-        elif key == shuffle_key:  # space
-            cube.shuffle_cube()
-            cube.display_unfolded_cube("cursor", cursor_pos)
-
-        elif key == new_key:  # new
-            del cube
-            cube = Cube()
-            cube.display_unfolded_cube("all", cursor_pos)
-            cube.display_keys_usage()
-
-        elif key == reverse_key:  # r
-            cube.reverse_moves()
-
-        elif key in turn_keys:  # Shift_L, Shift_R
-            cube.turn(cursor_pos, key_to_direction[key])
-            cube.display_unfolded_cube("all", cursor_pos)
-
-        elif key == solve_key:  # Return
-            solver = CubeSolver(cube)
-            solver.solve(cursor_pos)    # TODO: first_color logic
-            cube.display_unfolded_cube("cursor", cursor_pos)
-
-        elif key in side_selection_keys:  # Control_L, Control_R
-            if not side_selected:
-                side_selected = True
-            else:
-                side_selected = False
-
-            cube.display_unfolded_cube("cursor", cursor_pos, side_selected)
-
-    # wait for next key-press
-    key = cube.win.getKey().replace("KP_", "")
-
-del cube
+game = CubeGame()
+game.play()
